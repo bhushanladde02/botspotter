@@ -1,0 +1,48 @@
+# BotSpotter sensor for Nginx/Apache via Vector (https://vector.dev) — no code.
+#
+#   1. Add the log format from sensors/nginx/log_format.conf to nginx.conf and
+#      point access_log at /var/log/nginx/botspotter.log with that format.
+#   2. Install Vector, drop this file in /etc/vector/vector.toml,
+#      set BS_KEY and BS_ENDPOINT in /etc/default/vector, start the service.
+#
+# Vector tails the log, drops obvious browsers, batches and POSTs to /v1/ingest.
+# Vector is a single static binary; it works for any web server that can
+# write a JSON access log (Nginx, Apache, Caddy, HAProxy…).
+
+[sources.nginx]
+type = "file"
+include = ["/var/log/nginx/botspotter.log"]
+read_from = "end"
+
+[transforms.parse]
+type = "remap"
+inputs = ["nginx"]
+source = '''
+. = parse_json!(.message)
+# .headers is a comma-separated list of header NAMES written by the log format.
+.headers = split(string!(.headers), ",")
+.ts = to_unix_timestamp(parse_timestamp!(.time, format: "%d/%b/%Y:%H:%M:%S %z"))
+.status = to_int!(.status)
+del(.time); del(.message)
+'''
+
+[transforms.drop_browsers]
+type = "filter"
+inputs = ["parse"]
+condition = '''
+ua = downcase(string!(.ua))
+!(contains(ua, "mozilla/") && includes(array!(.headers), "accept-language") && !contains(ua, "bot") && !contains(ua, "crawl") && !contains(ua, "spider"))
+'''
+
+[sinks.botspotter]
+type = "http"
+inputs = ["drop_browsers"]
+uri = "${BS_ENDPOINT:-https://botspotter.io/v1/ingest}"
+method = "post"
+encoding.codec = "json"
+batch.max_events = 500
+batch.timeout_secs = 5
+request.headers.X-BS-Key = "${BS_KEY}"
+request.headers.Content-Type = "application/json"
+# Vector posts either a JSON array or newline-delimited JSON depending on
+# version; /v1/ingest accepts {"events":[...]}, a bare array, and NDJSON.

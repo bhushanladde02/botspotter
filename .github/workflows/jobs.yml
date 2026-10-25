@@ -1,0 +1,23 @@
+# Batch jobs run here for free instead of Airflow on the VM (docs/free-tier.md).
+# When there are enough of these to justify 2 GB of RAM, move them to Airflow DAGs.
+name: jobs
+on:
+  schedule:
+    - cron: "17 6 * * *"   # daily 06:17 UTC
+  workflow_dispatch:
+jobs:
+  registry-sync:
+    runs-on: ubuntu-latest
+    permissions: { contents: write, pull-requests: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python jobs/registry_sync.py --write
+        env: { CF_API_TOKEN: "${{ secrets.CF_API_TOKEN }}" }
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          title: "registry: new AI bots from public lists"
+          commit-message: "registry: sync known_bots.json"
+          branch: bot/registry-sync
+          body: "Automated daily sync from ai.robots.txt / Cloudflare Radar. Review the new patterns, then merge and redeploy."

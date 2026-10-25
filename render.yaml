@@ -1,0 +1,20 @@
+# Free temporary demo on Render (https://render.com): in-memory mode, one process.
+# Render free web services sleep after 15 min idle and reset memory on wake —
+# fine for showing the product, not for real sensors. Real deploy: docker-compose.yml.
+services:
+  - type: web
+    name: botspotter-demo
+    runtime: python
+    plan: free
+    buildCommand: pip install -e ".[demo]"
+    startCommand: python scripts/dev.py
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: BS_SENSOR_KEYS
+        value: demokey:demo-site
+      - key: BS_NAMING_SALT
+        generateValue: true
+      - key: BS_VISITOR_SECRET
+        generateValue: true
