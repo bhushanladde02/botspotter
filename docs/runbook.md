@@ -21,6 +21,7 @@ service sleeps (15 min idle) or redeploys. Use it to show the product and test t
 2. render.com → New → Blueprint → pick the repo → Apply. URL: `https://botspotter-demo.onrender.com`.
 3. Seed it: `python scripts/seed_traffic.py --url https://botspotter-demo.onrender.com/v1/ingest --key demokey --hits 2000`
 4. First request after sleep takes ~30 s (cold start). That is Render's free tier, not us.
+5. `CERTIFICATE_VERIFY_FAILED` on macOS = python.org build without root CAs: run `/Applications/Python 3.12/Install Certificates.command` once, or `pip install certifi` (the seed script uses certifi when installed).
 Do **not** hand out `demokey` as a real sensor key; the demo forgets everything on restart.
 
 ## Full stack with Docker (what runs on the VM)

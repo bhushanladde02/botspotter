@@ -12,7 +12,16 @@ import asyncio
 import json
 import random
 import time
+import ssl
 import urllib.request
+
+# python.org macOS builds ship without root CAs; use certifi's bundle if present.
+try:
+    import certifi
+
+    _ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:  # pragma: no cover
+    _ctx = ssl.create_default_context()
 
 UAS = [
     ("Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)", "20.171.{a}.{b}", "US"),
@@ -54,7 +63,7 @@ def hit(country_override=None):
 def post(url, key, events):
     req = urllib.request.Request(url, data=json.dumps({"events": events}).encode(), method="POST",
                                  headers={"Content-Type": "application/json", "X-BS-Key": key})
-    with urllib.request.urlopen(req, timeout=10) as r:
+    with urllib.request.urlopen(req, timeout=10, context=_ctx) as r:
         return json.loads(r.read())
 
 
