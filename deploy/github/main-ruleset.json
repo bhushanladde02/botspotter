@@ -53,6 +53,9 @@
             "context": "test (3.12)"
           },
           {
+            "context": "rehearse"
+          },
+          {
             "context": "no-secrets"
           },
           {

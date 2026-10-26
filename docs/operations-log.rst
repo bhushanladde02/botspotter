@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 11:30
+     - Hardening after a visible ~30 s gap on the 11:03 deploy: Caddy ``lb_try_duration 25s`` on api/ingest proxies (retry through the container recreate); ``deploy/rehearse.sh`` runs the real stack + production smoke in CI as required check ``rehearse``; verifier status (operators, ranges date) in ``snapshot.trust`` and honest wording on the "Real or impostor?" card
+     - Bhushan
    * - 2026-10-26 11:05
      - Deploy of the live map failed in step 2b (after the data refresh succeeded: City 50 MB, ASN 9 MB, 1928 crawler prefixes) and **auto-rolled back** in 40 s — first real use of the rollback. Cause not visible (``set -e`` exit without message). Fix: the whole runtime-data/cron step is now non-fatal, and the EXIT trap prints the failing command (``ERR`` trap records ``$BASH_COMMAND``). ``gate.yml`` re-runs on label changes
      - Bhushan

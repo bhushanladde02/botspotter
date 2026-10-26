@@ -1,0 +1,34 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { python: ["3.10", "3.12"] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ matrix.python }}" }
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+  image:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - run: docker buildx build --platform linux/amd64,linux/arm64 -t botspotter:ci .
+  rehearse:
+    # Deploy rehearsal: the real stack from scratch + the production smoke checks.
+    # Required check on main (deploy/github/main-ruleset.json): a change that would
+    # take the site down fails here, on the PR, not on botspotter.app.
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash deploy/rehearse.sh
+      - if: failure()
+        run: docker compose -p bsrehearse -f docker-compose.yml logs --tail 80 api aggregator ingest || true

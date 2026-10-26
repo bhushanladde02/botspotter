@@ -89,8 +89,8 @@ owner's explicit approval; GitHub enforces it (next section), the scripts make i
 2. **Add + commit** the change, with its docs and tests in the same commit.
 3. **Merge request**: ``scripts/mr.sh feat/<name> "<message>"`` runs the tests and the gate locally, commits, pushes and
    opens the PR with the checklist body (or ``gh pr create --web`` by hand).
-4. **CI must pass thoroughly** — required checks on the PR: ``test (3.10)``/``test (3.12)`` (full pytest), ``no-secrets``
-   (guard) and ``gate`` (the safety review below). The gate comments its report on the PR; a red check cannot be merged around.
+4. **CI must pass thoroughly** — required checks on the PR: ``test (3.10)``/``test (3.12)`` (full pytest), ``rehearse``
+   (the deploy rehearsal below), ``no-secrets`` (guard) and ``gate`` (the safety review below). The gate comments its report on the PR; a red check cannot be merged around.
 5. **Request to merge → owner notified**: ``.github/CODEOWNERS`` makes the owner the required reviewer of every file,
    so any PR opened by someone else (a contributor, or Claude once the GitHub App is installed on the repo) lands as a
    *review request* in the owner's GitHub notifications and email. A PR the owner opens himself needs no notification.
@@ -156,3 +156,22 @@ Working flow (the owner's own changes go through the same door)::
 Verify any time: ``gh api repos/bhushanladde02/botspotter/rulesets --jq '.[].name'`` and
 ``gh api repos/bhushanladde02/botspotter/environments/production --jq '.protection_rules'``. ``deploy/oracle.sh`` from a
 laptop bypasses the deploy gate and is for a dead CI only (operations log 2026-10-25).
+
+Deploy rehearsal (``deploy/rehearse.sh``, since 2026-10-26)
+----------------------------------------------------------
+
+Two of the three outages on 2026-10-26 would have been caught before merge by simply starting the stack once. So
+every PR now does exactly that in CI (``ci.yml`` job ``rehearse``, a required check): the real ``docker-compose.yml``
+from fresh volumes (``schema.sql`` and ``migrations.sql`` both run), Caddy site block validated with ``caddy validate``,
+api health, a bot hit and a human beacon through ingest → Redpanda → aggregator, then the same assertions
+``remote.sh`` makes on the VM: snapshot younger than 10 s, counters moved, admin ledger readable, sensor sites present,
+aggregator ``Up``, no "migrations.sql failed" in its log. ~2 minutes. Runs locally too (sets your ``.env`` aside and
+restores it).
+
+Zero-visible-downtime deploys
+-----------------------------
+
+A deploy recreates the three app containers; for 5–20 s there is no upstream. The Caddy site block now carries
+``lb_try_duration 25s`` / ``lb_try_interval 500ms`` on both proxies, so Caddy holds a request and retries until the new
+container answers — a slow page instead of a 502, and the live event stream reconnects by itself. Images are built
+before containers are stopped, so the gap is only the process start.

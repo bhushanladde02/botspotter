@@ -78,9 +78,12 @@ def _week(ts: float) -> str:
 
 
 class Counters:
-    def __init__(self, r: aioredis.Redis, sites: SensorSites | None = None):
+    def __init__(self, r: aioredis.Redis, sites: SensorSites | None = None, verifier=None):
         self.r = r
         self.sites = sites or SensorSites()
+        from .verify import Verifier
+
+        self.verifier = verifier or Verifier()   # only for status in the snapshot (which operators are checkable)
 
     @classmethod
     def from_url(cls, url: str | None = None) -> "Counters":
@@ -371,7 +374,8 @@ class Counters:
             },
             "peak": peak,
             "trust": {"verified": int(n_ver or 0), "impostors": int(n_imp or 0),
-                      "impostors_by_operator": [{"operator": c.decode(), "hits": int(n)} for c, n in imp_ops]},
+                      "impostors_by_operator": [{"operator": c.decode(), "hits": int(n)} for c, n in imp_ops],
+                      "operators": self.verifier.operators, "ranges_updated": self.verifier.updated},
             "by_cloud": [{"cloud": c.decode(), "hits": int(n)} for c, n in clouds],
             "network": {"sensors": int(n_sensors), "countries": int(n_countries), "sites": self.sites.public()},
             "feed": feed_items,

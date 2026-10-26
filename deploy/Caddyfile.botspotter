@@ -18,9 +18,16 @@ botspotter.app, www.botspotter.app {
 	}
 	header -Server
 	@ingest path /v1/ingest /v1/beacon
-	reverse_proxy @ingest bs-ingest:8001
+	reverse_proxy @ingest bs-ingest:8001 {
+		lb_try_duration 25s
+		lb_try_interval 500ms
+	}
 	reverse_proxy bs-api:8000 {
 		header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
 		flush_interval -1
+		# During a deploy the api container is recreated (~5-20 s). Keep retrying the
+		# upstream for that long instead of answering 502: visitors see a slow load, not an outage.
+		lb_try_duration 25s
+		lb_try_interval 500ms
 	}
 }
