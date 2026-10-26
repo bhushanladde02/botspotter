@@ -20,18 +20,18 @@ python scripts/pr_gate.py origin/main HEAD || { echo "gate blocked: fix, then 'g
 echo "== push"; git push -q -u origin "$BR"
 echo "== merge request"
 if gh pr view "$BR" >/dev/null 2>&1; then gh pr view "$BR" --web
-else gh pr create --base main --head "$BR" --title "$MSG" --body-file <(cat <<BODY
-## What
-$MSG
-
-## Checks
-- [x] pytest green locally
-- [x] scripts/pr_gate.py clean locally
-- [ ] docs updated in the same change (runbook / ops log / api / privacy as applicable)
-- [ ] no secrets, no private/ files, no deletions of prod data
-
-## Deploy
-Merging triggers \`deploy\`, which pauses at the production environment for the owner's approval.
-BODY
-) --web; fi
+else
+  BODY=$(mktemp)
+  {
+    echo "## What"; echo "$MSG"; echo
+    echo "## Checks"
+    echo "- [x] pytest green locally"
+    echo "- [x] scripts/pr_gate.py clean locally"
+    echo "- [ ] docs updated in the same change (runbook / ops log / api / privacy as applicable)"
+    echo "- [ ] no secrets, no private/ files, no deletions of prod data"; echo
+    echo "## Deploy"
+    echo 'Merging triggers `deploy`, which pauses at the production environment for the owner'"'"'s approval.'
+  } > "$BODY"
+  gh pr create --base main --head "$BR" --title "$MSG" --body-file "$BODY" --web
+fi
 echo "next: review the diff, wait for ci/guard/gate, Merge; then Actions → deploy → Review deployments → Approve"
