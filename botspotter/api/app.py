@@ -24,6 +24,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import hashlib
 import hmac
 import secrets
 import time
@@ -359,6 +360,34 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
 
     async def _visits(request: Request, days: int):
         return await request.app.state.store.visits_since(time.time() - days * 86400)
+
+    # ---- client-side error reports (so a phone failure is visible in /admin) -------------
+    @app.post("/v1/client-error", status_code=204)
+    async def client_error(request: Request):
+        r = request.app.state.counters.r
+        ip = request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "")
+        rl = f"bs:cerr:rl:{hashlib.sha256(ip.encode()).hexdigest()[:16]}"
+        n = await r.incr(rl)
+        if n == 1:
+            await r.expire(rl, 3600)
+        if n > 20:
+            return Response(status_code=204)
+        try:
+            body = orjson.loads((await request.body())[:2000] or b"{}")
+        except Exception:
+            return Response(status_code=204)
+        item = {"ts": time.time(), "m": str(body.get("m", ""))[:300], "s": str(body.get("s", ""))[:120],
+                "p": str(body.get("p", "/"))[:64], "ua": request.headers.get("user-agent", "")[:200]}
+        p = r.pipeline(transaction=False)
+        p.lpush("bs:client_errors", orjson.dumps(item)); p.ltrim("bs:client_errors", 0, 199)
+        await p.execute()
+        return Response(status_code=204)
+
+    @app.get("/v1/admin/client-errors")
+    async def admin_client_errors(request: Request, key: str = ""):
+        _admin(request, key)
+        rows = [orjson.loads(x) for x in await request.app.state.counters.r.lrange("bs:client_errors", 0, 199)]
+        return Response(orjson.dumps({"errors": rows}), media_type="application/json", headers={"Cache-Control": "private, no-store"})
 
     @app.get("/v1/admin/visitors")
     async def admin_visitors(request: Request, days: int = Query(90, ge=1, le=1100), key: str = ""):

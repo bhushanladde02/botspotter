@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 16:40
+     - Launch prep (PR pending): sensor package publishable to PyPI via trusted publishing (``publish-sensor.yml``, tag ``sensor-vX.Y.Z``, ``pypi`` environment with owner approval) + README/metadata; install line on /sensors shows the git fallback until the first release; map/live layer wrapped so a device where WebGL/canvas fails still gets counters (suspected cause of blank numbers on iPhone); browsers report uncaught JS errors to ``/v1/client-error`` (``/v1/admin/client-errors``); ticker collapses repeated hits of one bot into ``×N``; every list gets a filter box and a rows selector (5 on phones / 10 on desktop, remembered)
+     - Bhushan
    * - 2026-10-26 14:30
      - Feature (PR pending): self-serve sensor enrollment — GitHub OAuth sign-in, domain ownership proof (DNS TXT or /.well-known), automatic key issuance (hash in ``bs:sensor_keys``, read by ingest with 60 s cache), rotate/remove, site location from GeoIP, "first bot caught" check; terms §5a accounts; ``remote.sh`` now always installs the Caddy drop-in, reloads and verifies ``try_duration`` is in the running config (the retry block had silently never been applied — cause of the 12:29 502s); per-sensor ``last_seen``
      - Bhushan
