@@ -31,7 +31,10 @@ class KafkaStream(Stream):
             self._producer = AIOKafkaProducer(
                 bootstrap_servers=self.bootstrap,
                 linger_ms=20,  # batch for ~20ms -> far fewer round trips
-                compression_type="lz4",
+                # No compression: events are ~300 bytes and the broker is on the same
+                # host. (lz4/zstd need the `cramjam` wheel; its absence took prod down
+                # with "Compression library for lz4 not found" on 2026-10-25.)
+                compression_type=None,
                 acks=1,
             )
             await self._producer.start()

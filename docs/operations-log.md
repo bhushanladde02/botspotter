@@ -5,7 +5,7 @@ go here — they go in `private/notes.md` on the Mac (gitignored).
 
 | date (PT) | what | by |
 |---|---|---|
-| 2026-10-25 20:35 | Bug: production counters stayed at 0 — `lz4` codec package missing for aiokafka producer; added `lz4` dependency, redeploy | Bhushan |
+| 2026-10-25 20:40 | Bug: production counters stayed at 0 — ingest raised `Compression library for lz4 not found` on first Kafka publish (codec wheel missing). Fix: producer `compression_type=None`; smoke test in `remote.sh` now catches this | Bhushan |
 | 2026-10-25 20:12 | First production deploy on the shared A1 behind Caddy; Let's Encrypt certs issued for `botspotter.app` + `www`; site live | Bhushan |
 | 2026-10-25 20:10 | Caddy drop-in placed in `~/sharpen/deploy/caddy-extra/botspotter.caddy` (host dir mounted as `/etc/caddy/extra`) | Bhushan |
 | 2026-10-25 20:01 | Cloudflare SSL mode set to Full; DNS `A @`, `CNAME www` proxied | Bhushan |
