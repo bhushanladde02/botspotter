@@ -6,9 +6,25 @@ build-backend = "setuptools.build_meta"
 name = "botspotter-sensor"
 version = "0.1.0"
 description = "Report AI bot visits from your Python web app to BotSpotter. Zero dependencies."
+readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
+authors = [{ name = "Bhushan Arun Ladde" }]
+keywords = ["bots", "crawlers", "ai", "middleware", "asgi", "wsgi", "django"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Framework :: Django",
+  "Framework :: FastAPI",
+  "Framework :: Flask",
+  "Topic :: Internet :: WWW/HTTP",
+]
 dependencies = []
+
+[project.urls]
+Homepage = "https://botspotter.app"
+Source = "https://github.com/bhushanladde02/botspotter/tree/main/sensors/python-middleware"
+Documentation = "https://bhushanladde02.github.io/botspotter/sensors.html"
 
 [tool.setuptools.packages.find]
 include = ["botspotter_sensor*"]

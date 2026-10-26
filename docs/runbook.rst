@@ -124,7 +124,9 @@ Audience ledger (owner only)
 
 ``/admin`` lists every individual visitor (pseudonymous id, city, device, referrer, sessions, return visits) with CSV
 export; API: ``/v1/admin/visitors``, ``/v1/admin/visitors.csv``, ``/v1/admin/visits.csv`` (``X-BS-Admin`` header or
-``?key=``). What is stored and why: :doc:`privacy`.
+``?key=``). What is stored and why: :doc:`privacy`. ``/v1/admin/client-errors`` lists the last 200 JavaScript errors
+visitors' browsers reported (message, location, user agent; 20 per IP per hour) — the first place to look when
+someone says "the page shows dashes on my phone".
 
 -  Key: ``BS_ADMIN_KEY`` in the VM's ``.env``. ``deploy/remote.sh`` generates it once if missing; copy it into
    ``private/notes.md``. Unset → the routes 404. Rotate by editing ``.env`` and ``docker compose up -d api``.
@@ -155,6 +157,23 @@ Runtime data lives in ``~/botspotter-data`` on the VM (``DATA_DIR`` in ``.env``)
 When a file changes the script recreates ingest/api/aggregator (they read the data at start). Manual run:
 ``MAXMIND_ACCOUNT_ID=.. MAXMIND_LICENSE_KEY=.. bash deploy/refresh-data.sh``. Check: ``ls -la ~/botspotter-data``;
 the Live page's "Where bots live" card fills within minutes of the first hits.
+
+Publishing the sensor to PyPI (``botspotter-sensor``)
+-----------------------------------------------------
+
+Trusted publishing — no token stored anywhere. One-time setup:
+
+1. https://pypi.org/account/register/ → verify e-mail → enable 2FA (required to publish).
+2. https://pypi.org/manage/account/publishing/ → *Add a new pending publisher*: PyPI project name
+   ``botspotter-sensor``, owner ``bhushanladde02``, repository ``botspotter``, workflow ``publish-sensor.yml``,
+   environment ``pypi``.
+3. GitHub → Settings → Environments → New environment ``pypi`` → Required reviewers: owner (so a release, like a
+   deploy, waits for approval).
+
+Release: bump ``version`` in ``sensors/python-middleware/pyproject.toml`` through a normal PR, then
+``git tag sensor-v0.1.0 && git push origin sensor-v0.1.0`` → Actions → publish-sensor → approve. The workflow
+refuses a tag whose version does not match the file. Check: ``pip install botspotter-sensor`` installs the new
+version; the /sensors page's install line is then true for everyone.
 
 Evidence routine (reach, for any future claim)
 ----------------------------------------------

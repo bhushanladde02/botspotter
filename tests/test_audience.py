@@ -69,3 +69,13 @@ async def test_admin_disabled_without_key(stream, store, counters, enricher):
         ac = httpx.AsyncClient(transport=httpx.ASGITransport(app=api), base_url="http://api")
         assert (await ac.get("/v1/admin/visitors", headers={"X-BS-Admin": ""})).status_code == 404
         await ac.aclose()
+
+
+async def test_client_error_reports_are_stored_and_owner_readable(world):
+    ic, ac, agg, store, counters = world
+    r = await ac.post("/v1/client-error", content=b'{"m":"TypeError: x is undefined","s":"index.html:1:2","p":"/"}',
+                      headers={"user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) Safari/604.1"})
+    assert r.status_code == 204
+    assert (await ac.get("/v1/admin/client-errors")).status_code == 404
+    rows = (await ac.get("/v1/admin/client-errors", headers={"X-BS-Admin": "adminkey"})).json()["errors"]
+    assert rows and rows[0]["m"].startswith("TypeError") and "iPhone" in rows[0]["ua"]

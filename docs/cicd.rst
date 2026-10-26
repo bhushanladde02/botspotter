@@ -175,3 +175,6 @@ A deploy recreates the three app containers; for 5–20 s there is no upstream. 
 ``lb_try_duration 25s`` / ``lb_try_interval 500ms`` on both proxies, so Caddy holds a request and retries until the new
 container answers — a slow page instead of a 502, and the live event stream reconnects by itself. Images are built
 before containers are stopped, so the gap is only the process start.
+
+Releasing the Python sensor to PyPI is a separate, tag-triggered workflow (``publish-sensor.yml``) behind the ``pypi``
+environment's approval; see the runbook "Publishing the sensor".

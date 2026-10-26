@@ -123,6 +123,11 @@
   .about input,.about textarea{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;font:inherit;font-size:14px}
   .about label.chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--muted)}
   .about button{background:var(--acid);color:#07090f;border:0;font-weight:700;padding:11px 16px;border-radius:10px;cursor:pointer;font-size:14px}
+  .ltools{display:flex;gap:6px;margin:0 0 8px}
+  .ltools input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--text);padding:5px 8px;border-radius:7px;font:11px var(--mono)}
+  .ltools select{background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:5px 6px;border-radius:7px;font:11px var(--mono)}
+  .lscroll{max-height:420px;overflow:auto;scrollbar-width:thin}
+  @media (max-width:700px){ .lscroll{max-height:300px} }
   .about .btn{display:inline-block;background:var(--acid);color:#07090f;font-weight:700;padding:11px 16px;border-radius:10px;text-decoration:none;font-size:14px}
   .about button.sm{padding:6px 10px;font-size:12px;border-radius:8px}
   .about select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;font:inherit}
@@ -261,6 +266,8 @@
 }</pre>
       <p><strong>Python app</strong> (FastAPI, Starlette, Flask, Django) &mdash; zero dependencies:</p>
       <pre>pip install botspotter-sensor
+# (or straight from the repo:)
+# pip install "botspotter-sensor @ git+https://github.com/bhushanladde02/botspotter@main#subdirectory=sensors/python-middleware"
 
 # FastAPI / Starlette
 from botspotter_sensor import BotSpotterMiddleware
@@ -468,6 +475,10 @@ BOTSPOTTER_KEY = "<span class="en-k"></span>"</pre>
 </footer>
 
 <script>
+// Report uncaught errors (message, where, device) so a failure on a phone shows up in /admin
+// instead of as a screenshot. No personal data: UA + message + line, rate-limited server side.
+window.addEventListener('error', e => { try{ navigator.sendBeacon('/v1/client-error', JSON.stringify({m: String(e.message).slice(0,300), s: String(e.filename||'').slice(-80)+':'+e.lineno+':'+e.colno, p: location.pathname})); }catch(_){} });
+window.addEventListener('unhandledrejection', e => { try{ navigator.sendBeacon('/v1/client-error', JSON.stringify({m: 'unhandled: '+String(e.reason && e.reason.message || e.reason).slice(0,300), s: '', p: location.pathname})); }catch(_){} });
 const API = (window.BS_API || '');   // same origin by default; set window.BS_API for Pages deploys
 const $ = id => document.getElementById(id);
 const fmt = n => (n ?? 0).toLocaleString();
@@ -507,7 +518,9 @@ function stackedSpark(canvas, series){
 function renderTicker(sightings){
   const el = $('ticker');
   if (focusSlug && el.matches(':hover')) return;   // don't yank the hovered item away (see rows())
-  el.innerHTML = sightings.slice(0,14).map(x=>`<span onmouseenter="focusBot('${esc(slugOf(x.name))}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(slugOf(x.name))}')" style="cursor:pointer">${flag(x.country)} <i>${esc(x.name)}</i> · ${esc(x.site)} · ${ago(x.ts)}</span>`).join('');
+  const grouped = [];   // consecutive hits by the same bot on the same site become one item with a count
+  for (const x of sightings){ const g = grouped[grouped.length-1]; if (g && g.name===x.name && g.site===x.site){ g.n++; continue; } grouped.push({...x, n:1}); }
+  el.innerHTML = grouped.slice(0,14).map(x=>`<span onmouseenter="focusBot('${esc(slugOf(x.name))}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(slugOf(x.name))}')" style="cursor:pointer">${flag(x.country)} <i>${esc(x.name)}</i> · ${esc(x.site)}${x.n>1?` <b>×${x.n}</b>`:''} · ${ago(x.ts)}</span>`).join('');
 }
 const slugOf = n => String(n||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const ago = ts => { const d = Date.now()/1000 - ts; return d<60?`${Math.max(0,d|0)}s ago`:d<3600?`${(d/60)|0}m ago`:d<86400?`${(d/3600)|0}h ago`:`${(d/86400)|0}d ago`; };
@@ -521,11 +534,32 @@ function spark(canvas, data, color){
 }
 
 // ---------- lists
-function rows(el, items, render){
-  const html = items.length ? items.map(render).join('') : '<div class="row m">nothing yet — bots are shy</div>';
+// Every list gets a search box and a rows selector (5 on phones, 10 on desktop by default,
+// remembered per list); beyond the chosen count the list scrolls instead of growing the card.
+const DEFAULT_ROWS = (window.matchMedia && matchMedia('(max-width: 700px)').matches) ? 5 : 10;
+function listPref(id){ try{ return JSON.parse(localStorage.getItem('bs_list_'+id)||'null') || {}; }catch(e){ return {}; } }
+function setListPref(id, k, v){ const p = listPref(id); p[k]=v; try{ localStorage.setItem('bs_list_'+id, JSON.stringify(p)); }catch(e){} }
+function listTools(el){
+  if (el._tools) return el._tools;
+  const id = el.id, pref = listPref(id), t = document.createElement('div'); t.className = 'ltools';
+  t.innerHTML = `<input type="search" placeholder="filter…" value="${esc(pref.q||'')}" aria-label="filter list"><select aria-label="rows">${[5,10,25,50,0].map(n=>`<option value="${n}" ${((pref.rows??DEFAULT_ROWS)===n)?'selected':''}>${n?n+' rows':'all'}</option>`).join('')}</select>`;
+  el.parentNode.insertBefore(t, el);
+  t.querySelector('input').addEventListener('input', e => { setListPref(id,'q',e.target.value); el._html=null; rows(el, el._items, el._render, true); });
+  t.querySelector('select').addEventListener('change', e => { setListPref(id,'rows',+e.target.value); el._html=null; rows(el, el._items, el._render, true); });
+  el.classList.add('lscroll'); return (el._tools = t);
+}
+function rows(el, items, render, force){
+  el._items = items; el._render = render;
+  const pref = el.id ? listPref(el.id) : {}, q = (pref.q||'').toLowerCase(), max = pref.rows ?? DEFAULT_ROWS;
+  if (el.id && items.length > 5) listTools(el);
+  let shown = items;
+  if (q){ shown = items.filter(it => render(it).replace(/<[^>]+>/g,' ').toLowerCase().includes(q)); }
+  const total = shown.length; if (max) shown = shown.slice(0, max);
+  const html = (shown.length ? shown.map(render).join('') : `<div class="row m">${q ? 'no match for “'+esc(q)+'”' : 'nothing yet — bots are shy'}</div>`)
+             + (total > shown.length ? `<div class="row m" style="justify-content:center">+${total-shown.length} more · pick more rows above</div>` : '');
   // Rewriting the DOM pulls the hovered row out from under the cursor (fires mouseleave,
   // no mouseenter until the mouse moves). Only touch it when it changed and nobody is hovering.
-  if (html === el._html || (focusSlug && el.matches(':hover'))) return;
+  if (!force && (html === el._html || (focusSlug && el.matches(':hover')))) return;
   el._html = html; el.innerHTML = html;
 }
 const botRow = b => `<div class="row" data-slug="${esc(b.slug)}" onmouseenter="focusBot('${esc(b.slug)}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(b.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(b.slug)}.svg?size=56" alt="" loading="lazy">${esc(b.display_name||b.name)}${b.claimed?' <span title="claimed by operator" style="color:var(--acid)">✓</span>':''}</span><span class="tag ${esc(b.category)}">${esc(b.operator==='unknown'?'unknown':b.operator)}</span></span><span class="h">${fmt(b.hits)}</span></div>`;
@@ -551,27 +585,28 @@ function paint(s){
     stackedSpark($('spark'), s.bots.category_hourly || {});
     renderCats(s.bots.by_category); renderTicker(s.sightings || []);
     const top = catFilter ? s.bots.top.filter(b=>b.category===catFilter) : s.bots.top;
-    rows($('top'), top.slice(0,10), botRow);
-    rows($('feed'), s.feed.slice(0,10), f => `<div class="row" onmouseenter="focusBot('${esc(f.slug)}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(f.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(f.slug)}.svg?size=56" alt="" loading="lazy">${esc(f.name)}</span><div class="m">${esc(f.ua_family)} · ${f.sites} site${f.sites>1?'s':''} · ${esc(f.country)}</div></span><span class="m">${new Date(f.ts*1000).toLocaleTimeString()}</span></div>`);
+    rows($('top'), top, botRow);
+    rows($('feed'), s.feed, f => `<div class="row" onmouseenter="focusBot('${esc(f.slug)}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(f.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(f.slug)}.svg?size=56" alt="" loading="lazy">${esc(f.name)}</span><div class="m">${esc(f.ua_family)} · ${f.sites} site${f.sites>1?'s':''} · ${esc(f.country)}</div></span><span class="m">${new Date(f.ts*1000).toLocaleTimeString()}</span></div>`);
     if (s.trust){ $('t_ver').textContent = fmt(s.trust.verified); $('t_imp').textContent = fmt(s.trust.impostors);
-      rows($('t_ops'), s.trust.impostors_by_operator.slice(0,6), o => `<div class="row"><span class="n">pretending to be ${esc(o.operator)}</span><span class="h" style="color:#ff3b4f">${fmt(o.hits)}</span></div>`);
+      rows($('t_ops'), s.trust.impostors_by_operator, o => `<div class="row"><span class="n">pretending to be ${esc(o.operator)}</span><span class="h" style="color:#ff3b4f">${fmt(o.hits)}</span></div>`);
       const ops = s.trust.operators || [], upd = s.trust.ranges_updated ? ' (ranges updated ' + s.trust.ranges_updated.slice(0,10) + ')' : '';
       $('t_note').textContent = !ops.length ? 'published ranges not loaded on this server yet — no claims are made'
         : (s.trust.verified + s.trust.impostors) ? `checked against ${ops.join(', ')}${upd}`
         : `ready for ${ops.join(', ')}${upd} — none of their bots has visited a sensor yet`; }
-    if (s.by_cloud) rows($('clouds'), s.by_cloud.slice(0,10), c => `<div class="row"><span class="n">${esc(c.cloud)}</span><span class="h">${fmt(c.hits)}</span></div>`);
-    rows($('countries'), s.bots.by_country.slice(0,10), c => `<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h">${fmt(c.hits)}</span></div>`);
-    rows($('ops'), s.bots.by_operator.slice(0,10), o => `<div class="row"><span class="n">${esc(o.operator)}</span><span class="h">${fmt(o.hits)}</span></div>`);
-    rows($('h_countries'), (s.humans.by_country||[]).slice(0,8), c => `<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h" style="color:var(--pink)">${fmt(c.views)}</span></div>`);
-    rows($('h_sources'), (s.humans.by_source||[]).slice(0,8), c => `<div class="row"><span class="n" style="font-size:12px">${esc(c.source)}</span><span class="h" style="color:var(--cyan)">${fmt(c.views)}</span></div>`);
+    if (s.by_cloud) rows($('clouds'), s.by_cloud, c => `<div class="row"><span class="n">${esc(c.cloud)}</span><span class="h">${fmt(c.hits)}</span></div>`);
+    rows($('countries'), s.bots.by_country, c => `<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h">${fmt(c.hits)}</span></div>`);
+    rows($('ops'), s.bots.by_operator, o => `<div class="row"><span class="n">${esc(o.operator)}</span><span class="h">${fmt(o.hits)}</span></div>`);
+    rows($('h_countries'), (s.humans.by_country||[]), c => `<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h" style="color:var(--pink)">${fmt(c.views)}</span></div>`);
+    rows($('h_sources'), (s.humans.by_source||[]), c => `<div class="row"><span class="n" style="font-size:12px">${esc(c.source)}</span><span class="h" style="color:var(--cyan)">${fmt(c.views)}</span></div>`);
 }
 async function refreshSensors(){
-  try{ const s = await (await fetch(API+'/v1/sensors')).json(); rows($('sensors'), s.sensors.slice(0,10), x => `<div class="row"><span class="n">${esc(x.site)}</span><span class="h">${fmt(x.hits)}</span></div>`);}catch(e){}
+  try{ const s = await (await fetch(API+'/v1/sensors')).json(); rows($('sensors'), s.sensors, x => `<div class="row"><span class="n">${esc(x.site)}</span><span class="h">${fmt(x.hits)}</span></div>`);}catch(e){}
 }
 const flag = cc => (cc && cc.length===2 && cc!=='XX') ? String.fromCodePoint(...[...cc.toUpperCase()].map(c=>127397+c.charCodeAt())) : '🌐';
 
 // ---------- map (guarded: if the MapLibre CDN fails, counters still work)
 let map=null, refreshMap=()=>{};
+try {   // the map (WebGL, canvas, audio) is optional: if any of it throws on a device, counters and lists must still work
 if (window.maplibregl) {
 map = new maplibregl.Map({
   container:'map', center:[12,22], zoom:1.7, minZoom:1.3, maxZoom:10, renderWorldCopies:false,
@@ -699,6 +734,7 @@ connectLive();
 setInterval(()=>{ const c = Date.now()-60000; recent = recent.filter(t=>t>c); $('hud_rate').textContent = recent.length ? `${recent.length}/min` : ''; }, 2000);
 
 } else { $('map').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">map library failed to load — counters still live</div>'; }
+} catch (mapErr) { console.error('map disabled:', mapErr); map = null; try{ $('map').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">map unavailable on this device — counters still live</div>'; }catch(_){} }
 
 // ---------- hover a bot -> light up where it comes from
 const HOME = {center:[12,22], zoom:1.7};
@@ -818,8 +854,8 @@ async function loadStats(){ try{
   $('st_peak').textContent = fmt(t.peak_day_unique_humans); $('st_peak_l').textContent = 'peak day · ' + (t.peak_day || '—');
   const snap = lastSnap || (await (await fetch(API+'/v1/snapshot')).json()); $('st_watch').textContent = fmt(snap.humans.watching_now||0);
   spark($('st_spark'), r.daily.map(d=>d.unique_humans), '#ff4dd2');
-  rows($('st_cc'), r.by_country.slice(0,12), c=>`<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h" style="color:var(--pink)">${fmt(c.views)}</span></div>`);
-  rows($('st_src'), r.by_source.slice(0,12), c=>`<div class="row"><span class="n">${esc(c.source)}</span><span class="h" style="color:var(--cyan)">${fmt(c.views)}</span></div>`);
+  rows($('st_cc'), r.by_country, c=>`<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h" style="color:var(--pink)">${fmt(c.views)}</span></div>`);
+  rows($('st_src'), r.by_source, c=>`<div class="row"><span class="n">${esc(c.source)}</span><span class="h" style="color:var(--cyan)">${fmt(c.views)}</span></div>`);
   $('st_table').innerHTML = r.daily.slice().reverse().filter(d=>d.views).map(d=>`<div class="row"><span class="n">${d.date}</span><span class="m">${fmt(d.unique_humans)} humans · ${fmt(d.views)} views · ${fmt(d.bot_hits)} bot hits · ${d.top_countries.map(([c,n])=>flag(c)+' '+n).join(' ')}</span></div>`).join('') || '<div class="row m">no days yet</div>';
 }catch(e){ console.error('stats', e); } }
 

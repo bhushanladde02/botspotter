@@ -150,6 +150,10 @@ Require ``BS_ADMIN_KEY`` (``X-BS-Admin`` header, or ``?key=`` for downloads); 40
      - audience ledger: ``summary`` (visitors, returning, sessions, views, cities, sources, browsers, OS, devices, languages, pages, daily) and ``visitors[]`` — one row per pseudonymous visitor (id, first/last seen, days active, sessions, views, country, city, browser, OS, device, language, first referrer, pages)
    * - ``GET /v1/admin/visitors.csv?days=N``
      - the ``visitors[]`` rows as CSV
+   * - ``POST /v1/client-error`` (public, 204)
+     - the page reports uncaught JavaScript errors here (message, file:line, path; UA from the request); 20/IP/hour, last 200 kept
+   * - ``GET /v1/admin/client-errors``
+     - those reports, newest first
    * - ``GET /v1/admin/visits.csv?days=N``
      - every page view (newest first) as CSV: ts, visitor id, country, region, city, page, referrer, browser, os, device, lang
 

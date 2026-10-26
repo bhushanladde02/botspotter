@@ -1,0 +1,35 @@
+# Publish the Python sensor (sensors/python-middleware) to PyPI as `botspotter-sensor`.
+# Trusted publishing (OIDC): no API token stored anywhere. One-time setup in docs/runbook.rst
+# "Publishing the sensor". Triggered by a tag `sensor-vX.Y.Z` (must match the version in
+# sensors/python-middleware/pyproject.toml). The `pypi` environment carries the owner's approval.
+# Install: cp deploy/github/workflows/publish-sensor.yml .github/workflows/publish-sensor.yml
+name: publish-sensor
+on:
+  push:
+    tags: ["sensor-v*"]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install build
+      - name: version must match the tag
+        if: startsWith(github.ref, 'refs/tags/sensor-v')
+        run: |
+          v=$(grep -m1 '^version' sensors/python-middleware/pyproject.toml | sed 's/.*"\(.*\)"/\1/')
+          [ "sensor-v$v" = "${GITHUB_REF#refs/tags/}" ] || { echo "tag ${GITHUB_REF#refs/tags/} != pyproject version $v"; exit 1; }
+      - run: python -m build sensors/python-middleware --outdir dist
+      - uses: actions/upload-artifact@v4
+        with: { name: dist, path: dist/ }
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions: { id-token: write }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: dist, path: dist/ }
+      - uses: pypa/gh-action-pypi-publish@release/v1
