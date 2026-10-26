@@ -133,7 +133,8 @@ export; API: ``/v1/admin/visitors``, ``/v1/admin/visitors.csv``, ``/v1/admin/vis
    Settings (Managed Transforms) → **Add visitor location headers** → On. Until then rows have country only.
 -  Schema changes: ``db/schema.sql`` runs only when the Postgres volume is created. Every later change goes in
    ``botspotter/data/migrations.sql`` (idempotent ``IF NOT EXISTS`` statements), which ``PostgresStore.start()`` applies
-   on every boot of api and aggregator. ``tests/test_packaging.py`` checks the file ships in the wheel.
+   on every boot of api and aggregator; a failing migration is logged and skipped, never fatal. Comment lines are
+   stripped before statements are split on ``;``. ``tests/test_packaging.py`` checks the file ships and parses.
 
 Evidence routine (reach, for any future claim)
 ----------------------------------------------

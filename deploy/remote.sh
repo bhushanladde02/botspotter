@@ -13,7 +13,9 @@ COMPOSE="docker compose -f docker-compose.yml -f docker-compose.vm.yml"
 step() { printf '\n== %s\n' "$*"; }
 
 step "1/7 code ($GIT_REF)"
+PREV_REV=""
 if [ -d "$APP_DIR/.git" ]; then
+  PREV_REV=$(git -C "$APP_DIR" rev-parse HEAD 2>/dev/null || true)
   git -C "$APP_DIR" fetch --quiet origin
   git -C "$APP_DIR" checkout --quiet "$GIT_REF"
   git -C "$APP_DIR" pull --ff-only --quiet origin "$GIT_REF" || true
@@ -42,6 +44,21 @@ if ! grep -q '^BS_ADMIN_KEY=' .env; then
 fi
 if grep -q '^CADDY_NETWORK=' .env; then sed -i "s|^CADDY_NETWORK=.*|CADDY_NETWORK=$NET|" .env; else echo "CADDY_NETWORK=$NET" >> .env; fi
 echo "caddy network: $NET"
+
+# Any failure from here on (health, smoke) rebuilds the previous revision so a bad
+# deploy costs minutes, not hours (2026-10-26: a migration bug left the site down
+# until a manual checkout). Disable with ROLLBACK=0 when debugging on the box.
+rollback() {
+  rc=$?
+  if [ "$rc" -ne 0 ] && [ -n "$PREV_REV" ] && [ "${ROLLBACK:-1}" = 1 ] && [ "$(git rev-parse HEAD)" != "$PREV_REV" ]; then
+    echo "!! deploy failed (exit $rc) — rolling back to ${PREV_REV:0:8}"
+    git checkout --quiet "$PREV_REV"
+    $COMPOSE up -d --build --remove-orphans || true
+    echo "rolled back; fix forward and push again"
+  fi
+  exit "$rc"
+}
+trap rollback EXIT
 
 step "3/7 build + start"
 $COMPOSE up -d --build --remove-orphans
@@ -110,5 +127,6 @@ CRON_LINE="17 9 * * * $APP_DIR/deploy/backup.sh >> $HOME/botspotter-backups/back
 ( crontab -l 2>/dev/null | grep -v 'botspotter/deploy/backup.sh'; echo "$CRON_LINE" ) | crontab -
 echo "cron: $CRON_LINE"
 
+trap - EXIT
 step "7/7 done"
 echo "sensor keys (site owners):"; grep '^BS_SENSOR_KEYS=' .env | sed 's/^BS_SENSOR_KEYS=//' | tr ',' '\n' | sed 's/^/  /'

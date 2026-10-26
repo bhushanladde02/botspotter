@@ -70,3 +70,11 @@ Branch policy (suggested)
 -------------------------
 
 Work on branches, open a PR, let ``ci.yml`` pass, merge to ``main`` → auto deploy. Direct pushes to ``main`` also deploy; that's fine for a solo project.
+
+Automatic rollback
+------------------
+
+``deploy/remote.sh`` records the revision running before the pull. If the health wait or the smoke test fails, it
+checks that revision out again and rebuilds, so a bad push costs a few minutes rather than an outage; the workflow run
+is still red and says "rolled back". Fix forward and push again. ``ROLLBACK=0 bash deploy/remote.sh`` disables it when
+debugging directly on the VM. A deploy that fails *before* the build step (secrets, clone) changes nothing.

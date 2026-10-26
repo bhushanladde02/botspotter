@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 import asyncpg
@@ -7,6 +8,17 @@ import asyncpg
 from ..fingerprint import slugify_name
 from ..models import BotEvent, PortalVisit
 from .base import Store
+
+
+log = logging.getLogger("botspotter.store")
+
+
+def split_sql(sql: str) -> list[str]:
+    """Statements from a .sql file: comment lines removed first, then split on ';'.
+    (Splitting first and dropping chunks that *start* with a comment silently
+    discarded the statement under the file header — the 2026-10-26 outage.)"""
+    body = "\n".join(l for l in sql.splitlines() if not l.strip().startswith("--"))
+    return [x.strip() for x in body.split(";") if x.strip()]
 
 
 def _ts(t: float) -> datetime:
@@ -26,16 +38,19 @@ class PostgresStore(Store):
         await self._migrate()
 
     async def _migrate(self) -> None:
-        """schema.sql runs only when the volume is created; db/migrations.sql holds
-        every change since and is idempotent, so running it on each boot is safe."""
+        """schema.sql runs only when the volume is created; botspotter/data/migrations.sql
+        holds every change since and is idempotent, so running it on each boot is safe.
+        A failure is logged and NOT raised: a broken migration must degrade one feature,
+        never take the site down (2026-10-26: it did — see the operations log)."""
         from importlib import resources
 
         sql = resources.files("botspotter.data").joinpath("migrations.sql").read_text()
-        async with self.pool.acquire() as con:
-            for stmt in [x.strip() for x in sql.split(";") if x.strip() and not x.strip().startswith("--")]:
-                body = "\n".join(l for l in stmt.splitlines() if not l.strip().startswith("--")).strip()
-                if body:
-                    await con.execute(body)
+        try:
+            async with self.pool.acquire() as con:
+                for stmt in split_sql(sql):
+                    await con.execute(stmt)
+        except Exception:  # noqa: BLE001 - deliberate: isolate the migration
+            log.exception("migrations.sql failed — continuing with the existing schema")
 
     async def stop(self) -> None:
         if self.pool:
