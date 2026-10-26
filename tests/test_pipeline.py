@@ -83,6 +83,7 @@ async def test_full_flow_counts_names_and_map(world):
     assert snap["bots"]["distinct"] == 3
     assert snap["bots"]["hits_today"] == 10
     assert snap["network"]["sensors"] == 1
+    assert snap["peak"]["bots"]["hits"] == 10
     top = snap["bots"]["top"]
     assert top[0]["operator"] == "OpenAI" and top[0]["hits"] == 5
     assert all(" #" in b["name"] for b in top)
@@ -136,10 +137,30 @@ async def test_human_visitor_counter(world):
                           headers={"x-forwarded-for": ip, "user-agent": CHROME_UA, "cf-ipcountry": "IN"})
         assert r.status_code == 204
     await drain(agg)
-    h = (await ac.get("/v1/snapshot")).json()["humans"]
+    snap = (await ac.get("/v1/snapshot")).json()
+    h = snap["humans"]
     assert h["views"] == 3 and h["views_today"] == 3
-    assert h["unique_today"] == 2 and h["unique_all"] == 2
+    assert h["unique_today"] == 2 and h["unique_week"] == 2 and h["unique_all"] == 2
     assert len(store.visits) == 3 and all(len(v.visitor) == 24 for v in store.visits)
+    assert snap["peak"]["humans"]["unique"] == 2 and snap["peak"]["humans_now"] == 2
+    assert 0 <= snap["peak"]["humans"]["hour_utc"] <= 23
+
+
+async def test_returning_human_counts_once_all_time(world, monkeypatch):
+    """Daily hash rotates (privacy) but the all-time HLL uses the stable hash."""
+    import botspotter.enrich as en
+
+    ic, ac, agg, store, counters = world
+    real_time = en.time.time
+    for day_offset in (0, 1, 2):
+        monkeypatch.setattr(en.time, "time", lambda o=day_offset: real_time() + o * 86400)
+        await ic.post("/v1/beacon", json={}, headers={"x-forwarded-for": "9.9.9.9", "user-agent": CHROME_UA})
+    monkeypatch.setattr(en.time, "time", real_time)
+    await drain(agg)
+    h = (await ac.get("/v1/snapshot")).json()["humans"]
+    assert h["views"] == 3
+    assert h["unique_all"] == 1  # same person, three days -> one human
+    assert len({v.visitor for v in store.visits}) == 3 and len({v.vs for v in store.visits}) == 1
 
 
 async def test_portal_is_its_own_sensor(world):

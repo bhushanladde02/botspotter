@@ -28,9 +28,9 @@ Key layout (all prefixed ``bs:``)::
   bs:humans:views:d:<YYYYMMDD>      views per day
   bs:humans:hll:d:<YYYYMMDD>        HLL unique humans per day
   bs:humans:hll:w:<YYYYWW>          HLL unique humans per ISO week
-  bs:humans:hll:all                 HLL unique humans all time (daily hashes rotate,
-                                    so this over-counts returning visitors across
-                                    days — by design, it's a fun counter not analytics)
+  bs:humans:hll:all                 HLL unique humans all time (fed with the stable
+                                    hash `vs`, so a returning person counts once)
+  bs:humans:hll:h:<YYYYMMDDHH>      HLL unique humans per hour (today's peak; expires 14d)
   bs:sensors                        ZSET site -> hits
   bs:snapshot                       JSON string, rewritten every second by aggregator
 """
@@ -191,7 +191,9 @@ class Counters:
             p.expire(f"bs:humans:hll:d:{d}", 400 * 86400)
             p.pfadd(f"bs:humans:hll:w:{w}", v.visitor)
             p.expire(f"bs:humans:hll:w:{w}", 400 * 86400)
-            p.pfadd("bs:humans:hll:all", v.visitor)
+            p.pfadd("bs:humans:hll:all", v.vs or v.visitor)
+            p.pfadd(f"bs:humans:hll:h:{_hour(v.ts)}", v.visitor)
+            p.expire(f"bs:humans:hll:h:{_hour(v.ts)}", 14 * 86400)
             p.zincrby("bs:humans:country", 1, v.country)
         await p.execute()
 
@@ -240,6 +242,26 @@ class Counters:
             p.get(f"bs:total:h:{_hour(base - i * 3600)}")
         hours = [int(x or 0) for x in await p.execute()]
 
+        # today's peaks (UTC day): busiest hour for bot hits and for unique humans
+        day_start = int(datetime.fromtimestamp(ts, tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+        hours_today = list(range(day_start, int(ts) + 1, 3600))
+        p = self.r.pipeline(transaction=False)
+        for h0 in hours_today:
+            p.get(f"bs:total:h:{_hour(h0)}")
+        for h0 in hours_today:
+            p.pfcount(f"bs:humans:hll:h:{_hour(h0)}")
+        res = await p.execute()
+        n = len(hours_today)
+        bot_hours = [int(x or 0) for x in res[:n]]
+        human_hours = [int(x or 0) for x in res[n:]]
+        peak_bots_i = max(range(n), key=lambda i: bot_hours[i]) if n else 0
+        peak_humans_i = max(range(n), key=lambda i: human_hours[i]) if n else 0
+        peak = {
+            "bots": {"hits": bot_hours[peak_bots_i] if n else 0, "hour_utc": datetime.fromtimestamp(hours_today[peak_bots_i], tz=timezone.utc).hour if n else 0},
+            "humans": {"unique": human_hours[peak_humans_i] if n else 0, "hour_utc": datetime.fromtimestamp(hours_today[peak_humans_i], tz=timezone.utc).hour if n else 0},
+            "humans_now": human_hours[-1] if n else 0,  # unique humans in the current hour
+        }
+
         # category x hour for the last 24h (stacked sparkline)
         p = self.r.pipeline(transaction=False)
         for i in range(23, -1, -1):
@@ -273,6 +295,7 @@ class Counters:
                 "unique_week": int(uniq_week),
                 "unique_all": int(uniq_all),
             },
+            "peak": peak,
             "network": {"sensors": int(n_sensors), "countries": int(n_countries)},
             "feed": [orjson.loads(x) for x in feed],
             "sightings": [orjson.loads(x) for x in sightings],

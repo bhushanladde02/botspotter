@@ -58,5 +58,8 @@ class Enricher:
         day = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%d")
         material = f"{settings.visitor_secret}\x1f{day}\x1f{ip}\x1f{ua}".encode()
         visitor = hashlib.blake2b(material, digest_size=12).hexdigest()
+        # Stable hash (no date) so "humans all time" counts a returning person once.
+        # It only ever enters a HyperLogLog (irreversible, no per-visitor record).
+        stable = hashlib.blake2b(f"{settings.visitor_secret}\x1fall\x1f{ip}\x1f{ua}".encode(), digest_size=12).hexdigest()
         g = self.geo.lookup(ip, cf_country)
-        return PortalVisit(ts=ts, visitor=visitor, country=g.country, page=page[:64] or "/")
+        return PortalVisit(ts=ts, visitor=visitor, vs=stable, country=g.country, page=page[:64] or "/")

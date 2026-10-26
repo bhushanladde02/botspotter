@@ -35,6 +35,8 @@
   .hero{padding:34px 20px 10px;text-align:center}
   .hero h1{margin:0;font-family:var(--mono);font-weight:800;font-size:clamp(44px,9vw,112px);letter-spacing:-3px;line-height:1;color:var(--acid);text-shadow:0 0 40px rgba(198,255,77,.25);font-variant-numeric:tabular-nums}
   .hero p{margin:10px 0 0;color:var(--muted);font-size:15px}
+  .hero .peak{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:8px}
+  .hero .peak b{color:var(--text);font-weight:600} .hero .peak i{font-style:normal;color:var(--pink)}
   .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:18px 20px;max-width:1200px;margin:0 auto}
   .tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
   .tile b{display:block;font-family:var(--mono);font-size:26px;font-variant-numeric:tabular-nums}
@@ -118,15 +120,16 @@
 <section class="hero">
   <h1 id="total">—</h1>
   <p>AI bot visits spotted across <b id="nsensors">—</b> sensors in <b id="ncountries">—</b> countries · <b id="distinct">—</b> bots named so far · same bot, same name, forever</p>
+  <p class="peak" id="peak">—</p>
 </section>
 
 <div class="tiles">
   <div class="tile bots"><b id="today">—</b><small>bot hits today</small></div>
   <div class="tile bots"><b id="hour">—</b><small>this hour</small></div>
   <div class="tile bots"><b id="discovered">—</b><small>bots discovered</small></div>
-  <div class="tile humans"><b id="humans_today">—</b><small>humans here today</small></div>
+  <div class="tile humans"><b id="humans_today">—</b><small>humans today</small></div>
+  <div class="tile humans"><b id="humans_week">—</b><small>humans this week</small></div>
   <div class="tile humans"><b id="humans_all">—</b><small>humans all time</small></div>
-  <div class="tile humans"><b id="views">—</b><small>page views</small></div>
 </div>
 
 <div class="cats" id="cats"></div>
@@ -143,7 +146,7 @@
   <div class="card"><h3>Sensors with most catches</h3><div id="sensors"></div></div>
 </div>
 
-<section class="about" id="about">
+<section class="about" id="page-about">
   <h1>What is BotSpotter?</h1>
   <p>Every day, thousands of AI bots crawl the internet. Some are collecting pages to train the next big model. Some are indexing the web for AI search answers. Some are fetching a page <em>right now</em> because a person just asked ChatGPT or Claude a question. Most websites never see any of it.</p>
   <p>BotSpotter makes it visible. A network of volunteer websites and honeypots reports every bot visit here. We count them live, put them on the map, and give each bot a name that stays the same wherever it shows up &mdash; so <span class="ex">Copper Heron #0042</span> is the same bot on your blog, on a news site, and on a server in Singapore. When a bot nobody has seen before appears on three independent sites, it gets <strong>discovered</strong> and named here first.</p>
@@ -171,7 +174,7 @@
   <a href="/" onclick="return go('/')" style="margin-left:16px">&larr; back to the live counter</a>
 </section>
 
-<section class="about" id="sensors">
+<section class="about" id="page-sensors">
   <h1>Add your site as a sensor</h1>
   <p>A sensor tells BotSpotter which <em>bots</em> visit your site. It never sends page content, cookies, header values, or your human visitors &mdash; browsers are filtered out on your server before anything leaves it. You get a public spot on the leaderboard and a private view of which AI companies read your pages.</p>
 
@@ -212,7 +215,7 @@ BOTSPOTTER_KEY = "YOUR_KEY"</pre>
   <div class="note">What leaves your server: header <em>names</em>, User-Agent, client IP (used once for country + network prefix, then discarded), method, status, and whether the path was <span class="ex">robots.txt</span>. Nothing else. Full detail in the <a href="/terms" onclick="return go('/terms')">terms</a>.</div>
 </section>
 
-<section class="about" id="terms">
+<section class="about" id="page-terms">
   <h1>Sensor Terms &amp; Privacy</h1>
   <p class="note">Plain-English summary first; the terms follow. Effective 25 Oct 2026. These apply to anyone who installs a BotSpotter sensor or uses the BotSpotter API. Just looking at the site? Only the Privacy section concerns you.</p>
 
@@ -246,7 +249,7 @@ BOTSPOTTER_KEY = "YOUR_KEY"</pre>
   <p><strong>Sent by the sensor, per request your server judges to be automated:</strong> the names (not values) of the request headers in order; the User-Agent string; the client IP address; the <span class="ex">CF-IPCountry</span> header if present; HTTP method and status code; the timestamp; and a flag for whether the path was <span class="ex">robots.txt</span>. Requests that look like ordinary browsers are filtered on your server and not sent. No page content, cookies, header values, query strings, form data, or other paths are sent.</p>
   <p><strong>Processed on arrival and then discarded:</strong> the IP address. We use it in memory to derive (a) a country and approximate region, and (b) for unidentified bots only, a coarse network prefix (/16, up to 65,536 addresses) that becomes part of the bot's fingerprint hash. The address itself is never written to disk, logs, or backups.</p>
   <p><strong>Stored:</strong> timestamp, your site id, the bot's fingerprint hash and derived name, a version-stripped User-Agent family, bot operator and category, country, region, a coarse geohash, and the robots.txt flag. Raw events are kept 90 days; hourly aggregates indefinitely.</p>
-  <p><strong>Human visitors to this portal:</strong> we count page views and daily unique visitors using a hash of IP, User-Agent, and the UTC date with a secret salt. The hash cannot be reversed and changes every day, so visitors can't be followed across days. No cookies, no local storage identifiers, no third-party analytics scripts.</p>
+  <p><strong>Human visitors to this portal:</strong> we count unique visitors using salted hashes of IP and User-Agent that are fed only into HyperLogLog counters (a probabilistic structure that cannot be reversed or enumerated). The daily hash includes the date and powers &ldquo;today&rdquo; and &ldquo;this week&rdquo;; a second hash without the date powers &ldquo;all time&rdquo; so a returning person is counted once. No per-visitor record is written anywhere. No cookies, no local storage identifiers, no third-party analytics scripts.</p>
   <p><strong>Legal basis (where GDPR/UK GDPR applies):</strong> legitimate interest in measuring automated traffic. We have designed the processing so that no personal data is retained; the IP address is processed transiently for seconds. If you believe a stored record identifies you, email us and we will remove it.</p>
 
   <h2>6. Published data and your site id</h2>
@@ -358,7 +361,9 @@ function paint(s){
     $('today').textContent = fmt(s.bots.hits_today); $('hour').textContent = fmt(s.bots.hits_this_hour);
     $('discovered').textContent = fmt(s.bots.discovered); $('distinct').textContent = fmt(s.bots.distinct);
     $('nsensors').textContent = fmt(s.network.sensors); $('ncountries').textContent = fmt(s.network.countries);
-    $('humans_today').textContent = fmt(s.humans.unique_today); $('humans_all').textContent = fmt(s.humans.unique_all); $('views').textContent = fmt(s.humans.views);
+    $('humans_today').textContent = fmt(s.humans.unique_today); $('humans_week').textContent = fmt(s.humans.unique_week); $('humans_all').textContent = fmt(s.humans.unique_all);
+    const pk = s.peak || {}; const hr = h => { const d = new Date(); d.setUTCHours(h,0,0,0); return d.toLocaleTimeString([], {hour:'numeric'}); };
+    $('peak').innerHTML = pk.bots ? `today's peak · <b>${fmt(pk.bots.hits)}</b> bot hits at ${hr(pk.bots.hour_utc)} · <i>${fmt(pk.humans.unique)}</i> humans at ${hr(pk.humans.hour_utc)} · <i>${fmt(pk.humans_now)}</i> here this hour · ${fmt(s.humans.views)} page views` : '';
     stackedSpark($('spark'), s.bots.category_hourly || {});
     renderCats(s.bots.by_category); renderTicker(s.sightings || []);
     const top = catFilter ? s.bots.top.filter(b=>b.category===catFilter) : s.bots.top;
@@ -439,10 +444,10 @@ function shareX(){ const t = encodeURIComponent(`I just found ${$('m_name').text
 $('modal').addEventListener('click', e => { if(e.target.id==='modal') closeModal(); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
 function go(path){ history.pushState(null,'',path); route(); window.scrollTo(0,0); return false; }
-const PAGES = {'/about':'about','/sensors':'sensors','/terms':'terms'};
+const PAGES = {'/about':'page-about','/sensors':'page-sensors','/terms':'page-terms'};
 function route(){ const page = PAGES[location.pathname] || null; document.body.classList.toggle('about-mode', !!page);
   for (const id of Object.values(PAGES)) $(id).style.display = page===id ? 'block' : 'none';
-  $('nav_about').classList.toggle('on', page==='about'); $('nav_sensors').classList.toggle('on', page==='sensors'||page==='terms'); $('nav_live').classList.toggle('on', !page);
+  $('nav_about').classList.toggle('on', page==='page-about'); $('nav_sensors').classList.toggle('on', page==='page-sensors'||page==='page-terms'); $('nav_live').classList.toggle('on', !page);
   if (!page && map) setTimeout(()=>map.resize(), 50); }
 function requestKey(e){ e.preventDefault(); const f = new FormData(e.target); const body = `Site: ${f.get('site')}\nEmail: ${f.get('email')}\nStack: ${f.get('stack')||'-'}\n\nI own/administer this site and accept the Sensor Terms.`;
   location.href = 'mailto:hello@botspotter.app?subject=' + encodeURIComponent('BotSpotter sensor key: ' + f.get('site')) + '&body=' + encodeURIComponent(body);

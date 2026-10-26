@@ -58,7 +58,8 @@ class BotEvent(BaseModel):
 
 class PortalVisit(BaseModel):
     ts: float
-    visitor: str  # daily-salted hash; rotates every UTC day
+    visitor: str  # daily-salted hash; rotates every UTC day (today / this week uniques)
+    vs: str = ""  # stable salted hash (no date) — fed ONLY into the all-time HyperLogLog, never stored per visit
     country: str
     page: str = "/"
 

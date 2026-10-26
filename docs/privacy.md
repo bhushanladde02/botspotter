@@ -14,7 +14,10 @@ Nothing. The IP is used in-process for (a) the `/16` network prefix of *unknown*
 `BotEvent` / `PortalVisit` (see `models.py`): timestamps, site id, fingerprint hash, name, UA family, operator/category, country, region, geohash, `hit_robots`. In Postgres and Redis. That is all.
 
 ## Humans on the portal
-Counted via `blake2b(VISITOR_SECRET + UTC-day + ip + ua)` → HyperLogLog. No cookie, no localStorage, no ID handed to the browser. The hash rotates daily, so a person is one unique per day and cannot be followed across days. The "all time" unique number therefore over-counts returning visitors — that is documented on the page as a fun counter, not analytics.
+Two salted hashes, both fed only into HyperLogLogs (irreversible, no per-visitor record):
+- daily: `blake2b(VISITOR_SECRET + UTC-day + ip + ua)` → "humans today / this week" and today's peak hour; rotates daily so visits can't be linked across days in any stored record;
+- stable: `blake2b(VISITOR_SECRET + "all" + ip + ua)` → the "humans all time" HLL only, so a returning person is counted once. It is never written to Postgres or any list; an HLL cannot be enumerated or reversed.
+No cookie, no localStorage, no ID handed to the browser.
 
 ## Bots are not people — but
 A one-person scraper running from a home connection is identified by `UA family + headers + home ISP /16 + country`. That is not personal data under GDPR in any reasonable reading (a /16 is up to 65k addresses), and we never store the address itself. If someone asks for "their" bot to be removed, delete its `bs:bot:<fp>` keys and `bots` row; the name will re-appear on the next hit, so also add the fingerprint to a denylist (TODO when it first happens — see `growth.md`).
