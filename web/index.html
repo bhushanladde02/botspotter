@@ -616,7 +616,7 @@ map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl({showCompass:false}));
 let lastPrecision = 0;
 function precisionForZoom(z){ return z < 3 ? 2 : z < 5.5 ? 3 : 4; }
-refreshMap = async function(force){
+refreshMap = async function(force){ if (!map) return;
   const p = precisionForZoom(map.getZoom()); if (!force && p === lastPrecision && refreshMap.t && Date.now()-refreshMap.t < 5000) return;
   lastPrecision = p; refreshMap.t = Date.now();
   try{
@@ -734,7 +734,8 @@ connectLive();
 setInterval(()=>{ const c = Date.now()-60000; recent = recent.filter(t=>t>c); $('hud_rate').textContent = recent.length ? `${recent.length}/min` : ''; }, 2000);
 
 } else { $('map').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">map library failed to load — counters still live</div>'; }
-} catch (mapErr) { console.error('map disabled:', mapErr); map = null; try{ $('map').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">map unavailable on this device — counters still live</div>'; }catch(_){} }
+} catch (mapErr) { console.error('map disabled:', mapErr); map = null; refreshMap = ()=>{};
+  try{ navigator.sendBeacon('/v1/client-error', JSON.stringify({m: 'map disabled: ' + String(mapErr && mapErr.message || mapErr).slice(0,250), s: String(mapErr && mapErr.stack || '').slice(0,120), p: location.pathname})); }catch(_){} try{ $('map').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">map unavailable on this device — counters still live</div>'; }catch(_){} }
 
 // ---------- hover a bot -> light up where it comes from
 const HOME = {center:[12,22], zoom:1.7};

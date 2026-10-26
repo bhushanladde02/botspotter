@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 16:50
+     - iPhone (Chrome iOS 148, iOS 17.2) shows "map unavailable": client error reports show only the consequence (``map.getZoom`` on null from the 10 s map refresh). Fix: refresh guarded when the map is off; the caught map-init error itself is now reported with its message/stack so the root cause is visible in ``/v1/admin/client-errors``
+     - Bhushan
    * - 2026-10-26 16:40
      - Launch prep (PR pending): sensor package publishable to PyPI via trusted publishing (``publish-sensor.yml``, tag ``sensor-vX.Y.Z``, ``pypi`` environment with owner approval) + README/metadata; install line on /sensors shows the git fallback until the first release; map/live layer wrapped so a device where WebGL/canvas fails still gets counters (suspected cause of blank numbers on iPhone); browsers report uncaught JS errors to ``/v1/client-error`` (``/v1/admin/client-errors``); ticker collapses repeated hits of one bot into ``×N``; every list gets a filter box and a rows selector (5 on phones / 10 on desktop, remembered)
      - Bhushan
