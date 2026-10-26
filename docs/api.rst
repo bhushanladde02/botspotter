@@ -72,6 +72,11 @@ Read API (public, Redis-only, cache headers on everything)
 
 Every request to the API service also passes through the **self-sensor** middleware: bots that visit the portal are counted under site ``botspotter-portal``.
 
+Discoverability
+---------------
+
+``GET /robots.txt`` (welcomes all bots), ``GET /sitemap.xml``, ``GET /feed.xml`` (RSS of discovered bots), ``GET /badge/{site}.svg`` (live sensor badge), ``GET /static/og.svg`` (social card).
+
 Claims (see :doc:`claims`)
 --------------------------
 

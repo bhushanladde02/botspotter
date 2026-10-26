@@ -165,6 +165,58 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
         res = await request.app.state.claims.update(bot, patch)
         return Response(orjson.dumps(res.body), status_code=res.status, media_type="application/json")
 
+    # ------------------------------------------------------------ discoverability
+    @app.get("/robots.txt")
+    async def robots():
+        # We WANT bots here: that is the product. Everyone is welcome; please come often.
+        body = "User-agent: *\nAllow: /\nSitemap: https://botspotter.app/sitemap.xml\n\n# Hello, bot. You are being counted — and named. See /claim to claim your name.\n"
+        return Response(body, media_type="text/plain", headers={"Cache-Control": "public, max-age=3600"})
+
+    @app.get("/sitemap.xml")
+    async def sitemap(request: Request):
+        feed = await request.app.state.counters.feed(200)
+        urls = ["https://botspotter.app/", "https://botspotter.app/about", "https://botspotter.app/sensors",
+                "https://botspotter.app/claim", "https://botspotter.app/terms"]
+        urls += [f"https://botspotter.app/bot/{f['slug']}" for f in feed if f.get("slug")]
+        xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + \
+              "".join(f"<url><loc>{u}</loc></url>" for u in urls) + "</urlset>"
+        return Response(xml, media_type="application/xml", headers={"Cache-Control": "public, max-age=600"})
+
+    @app.get("/feed.xml")
+    async def rss(request: Request):
+        """RSS of newly discovered bots — subscribe, embed, or let aggregators pick it up."""
+        from datetime import datetime, timezone
+        from xml.sax.saxutils import escape as x
+
+        items = await request.app.state.counters.feed(50)
+        def rfc822(ts): return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+        body = "".join(
+            f"<item><title>{x(i['name'])} discovered ({x(i.get('operator') or 'unidentified')})</title>"
+            f"<link>https://botspotter.app/bot/{x(i['slug'])}</link><guid>https://botspotter.app/bot/{x(i['slug'])}</guid>"
+            f"<pubDate>{rfc822(i['ts'])}</pubDate><description>{x(i['ua_family'])} · first seen in {x(i.get('country',''))} on {i.get('sites',1)} site(s)</description></item>"
+            for i in items)
+        xml = ('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>BotSpotter — newly discovered AI bots</title>'
+               '<link>https://botspotter.app/</link><description>Every AI bot on the internet, counted and named.</description>'
+               f'{body}</channel></rss>')
+        return Response(xml, media_type="application/rss+xml", headers={"Cache-Control": "public, max-age=300"})
+
+    @app.get("/badge/{site}.svg")
+    async def badge(request: Request, site: str):
+        """Live shields-style badge for a sensor site: 'AI bots spotted here · 1,234'."""
+        from xml.sax.saxutils import escape as x
+
+        site = site[:40]
+        hits = await request.app.state.counters.r.zscore("bs:sensors", site)
+        n = f"{int(hits):,}" if hits else "0"
+        left, right = "AI bots spotted here", n
+        lw, rw = 7 * len(left) + 12, 7 * len(right) + 14
+        svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{lw+rw}" height="20" role="img" aria-label="{x(left)}: {x(right)}">'
+               f'<rect width="{lw}" height="20" rx="3" fill="#0e1220"/><rect x="{lw}" width="{rw}" height="20" rx="3" fill="#c6ff4d"/>'
+               f'<rect x="{lw-3}" width="6" height="20" fill="#c6ff4d"/>'
+               f'<g font-family="Verdana,DejaVu Sans,sans-serif" font-size="11"><text x="6" y="14" fill="#e8ecf5">{x(left)}</text>'
+               f'<text x="{lw+7}" y="14" fill="#07090f" font-weight="bold">{x(right)}</text></g></svg>')
+        return Response(svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=300"})
+
     @app.get("/v1/sensors")
     async def sensors(request: Request, limit: int = Query(20, le=100)):
         return cached({"sensors": await request.app.state.counters.top_sensors(limit)}, 30)

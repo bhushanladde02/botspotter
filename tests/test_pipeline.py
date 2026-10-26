@@ -269,3 +269,15 @@ async def test_store_failure_does_not_crash_or_double_count(world):
     assert agg.store_errors == 1
     assert int(await counters.r.get("bs:errors:upsert_bots")) == 1
     assert len(store.events) == 3                   # the other store writes still happened
+
+
+async def test_discoverability_endpoints(world):
+    ic, ac, agg, store, counters = world
+    await ic.post("/v1/ingest", json={"events": hits(GPTBOT_UA, BOT_HEADERS, "20.171.207.5", "US", n=2)}, headers={"X-BS-Key": "devkey"})
+    await drain(agg)
+    r = await ac.get("/robots.txt"); assert r.status_code == 200 and "Allow: /" in r.text and "Sitemap:" in r.text
+    r = await ac.get("/sitemap.xml"); assert r.status_code == 200 and "/claim" in r.text and "/bot/" in r.text
+    r = await ac.get("/feed.xml"); assert r.status_code == 200 and "<rss" in r.text and "OpenAI" in r.text
+    r = await ac.get("/badge/dev-site.svg"); assert r.status_code == 200 and "<svg" in r.text and ">2<" in r.text
+    r = await ac.get("/badge/nobody.svg"); assert r.status_code == 200 and ">0<" in r.text
+    r = await ac.get("/static/og.svg"); assert r.status_code == 200

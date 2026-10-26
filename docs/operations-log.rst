@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-25 21:50
+     - Visibility: SEO/OG meta + JSON-LD, ``robots.txt``, ``sitemap.xml``, ``feed.xml`` (RSS), live sensor badge ``/badge/<site>.svg``, OG image; layout now uses full width on wide screens
+     - Bhushan
    * - 2026-10-25 21:45
      - UI: "Humans · where from" card (countries + referring sites, domain only); beacon sends ``document.referrer``
      - Bhushan

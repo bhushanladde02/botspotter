@@ -51,6 +51,20 @@ Features that make people come back (ordered by payoff/effort)
 
 .. _batch-jobs--airflow:
 
+Visibility checklist (launch)
+-----------------------------
+
+Shipped: OG/Twitter cards + JSON-LD, ``robots.txt`` that welcomes bots, ``sitemap.xml`` (includes discovered bot pages), ``feed.xml`` RSS of discoveries, live SVG **badge per sensor** (backlink engine), ``/claim`` (gives operators a reason to link to their bot page).
+
+To do, by payoff:
+
+1. Submit ``https://botspotter.app/sitemap.xml`` to Google Search Console and Bing Webmaster Tools (free; also triggers Googlebot/Bingbot visits = more named bots on day one).
+2. Launch post on LinkedIn + X + Hacker News ("Show HN: BotSpotter — live map of the AI bots crawling the web") + r/webdev; the referrer card shows which one works.
+3. Add the badge to your own three sites; each is a backlink and a sensor.
+4. Submit to directories that list live dashboards / internet observatories; email the maintainers of ai.robots.txt and the Dark Visitors blog — they cover exactly this.
+5. Weekly "state of the crawl" post generated from the data (top bots, new discoveries) — recurring content is what search engines reward.
+6. OG image per bot (``/bot/<slug>`` cards unfurl with the name + stats) once there's a PNG renderer.
+
 Batch jobs → Airflow
 --------------------
 
