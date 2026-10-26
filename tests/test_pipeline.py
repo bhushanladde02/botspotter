@@ -308,3 +308,21 @@ async def test_bot_profile_has_places(world):
     slug = (await ac.get("/v1/snapshot")).json()["bots"]["top"][0]["slug"]
     b = (await ac.get(f"/v1/bots/{slug}")).json()
     assert len(b["places"]) == 2 and b["places"][0]["hits"] == 3 and {"lat", "lon", "hits"} <= set(b["places"][0])
+
+
+async def test_snapshot_carries_places_and_centroid_fallback(world):
+    """Hover must not need a request: top bots, feed items and ticker sightings
+    carry coordinates in the snapshot. Bots that predate per-cell tracking fall
+    back to country centroids instead of showing nothing."""
+    ic, ac, agg, store, counters = world
+    await ic.post("/v1/ingest", json={"events": hits(GPTBOT_UA, BOT_HEADERS, "20.171.207.5", "US", n=2)}, headers={"X-BS-Key": "devkey"})
+    await drain(agg)
+    s = (await ac.get("/v1/snapshot")).json()
+    top = s["bots"]["top"][0]
+    assert top["places"] and {"lat", "lon", "hits"} <= set(top["places"][0])
+    assert s["feed"][0]["places"] == top["places"]
+    assert "lat" in s["sightings"][0] and "lon" in s["sightings"][0]
+    # simulate a bot recorded before bs:bot:<fp>:gh existed
+    await counters.r.delete(f"bs:bot:{top['fp']}:gh")
+    b = (await ac.get(f"/v1/bots/{top['slug']}")).json()
+    assert len(b["places"]) == 1 and b["places"][0]["hits"] == 2 and abs(b["places"][0]["lon"] - (-98.5)) < 10

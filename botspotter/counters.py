@@ -256,12 +256,18 @@ class Counters:
         for fp, _ in top:
             p.hmget(f"bs:bot:{fp.decode()}", "name", "slug", "operator", "category", "kind", "display_name", "claimed_at")
         metas = await p.execute()
+        feed_items = [orjson.loads(x) for x in feed]
+        # Origin cells ride along in the snapshot so hovering a bot never waits on a request.
+        places = await self.places_for(sorted({fp.decode() for fp, _ in top} | {f["fp"] for f in feed_items if f.get("fp")}))
+        for f in feed_items:
+            f["places"] = places.get(f.get("fp", ""), [])
         top_bots = []
         for (fp, score), meta in zip(top, metas):
             name, slug, op, cat, kind, dname, claimed = [m.decode() if m else "" for m in meta]
             top_bots.append({"fp": fp.decode(), "name": name, "slug": slug, "operator": op,
                              "category": cat, "kind": kind, "hits": int(score),
-                             "display_name": dname or None, "claimed": bool(claimed)})
+                             "display_name": dname or None, "claimed": bool(claimed),
+                             "places": places.get(fp.decode(), [])})
 
         # last 24 hourly totals for the sparkline
         hours = []
@@ -330,9 +336,52 @@ class Counters:
             },
             "peak": peak,
             "network": {"sensors": int(n_sensors), "countries": int(n_countries)},
-            "feed": [orjson.loads(x) for x in feed],
-            "sightings": [orjson.loads(x) for x in sightings],
+            "feed": feed_items,
+            "sightings": [self._with_latlon(orjson.loads(x)) for x in sightings],
         }
+
+    @staticmethod
+    def _with_latlon(sighting: dict) -> dict:
+        """Ticker items carry the sighting's cell as lat/lon so the page can focus
+        the map on hover without a lookup."""
+        gh = sighting.get("gh")
+        if gh:
+            from .geohash import decode as _dec
+
+            la, lo = _dec(gh)
+            sighting["lat"], sighting["lon"] = round(la, 3), round(lo, 3)
+        return sighting
+
+    async def places_for(self, fps: list[str], limit: int = 6) -> dict[str, list[dict]]:
+        """Origin cells per bot, biggest first, for the map focus-on-hover. Bots
+        that predate per-bot cell tracking fall back to the centroids of the
+        countries they were seen from, so hover always has something to show."""
+        if not fps:
+            return {}
+        from .geo import centroid
+        from .geohash import decode as _dec
+
+        p = self.r.pipeline(transaction=False)
+        for fp in fps:
+            p.zrevrange(f"bs:bot:{fp}:gh", 0, limit - 1, withscores=True)
+            p.zrevrange(f"bs:bot:{fp}:countries", 0, limit - 1, withscores=True)
+        res = await p.execute()
+        out: dict[str, list[dict]] = {}
+        for fp, i in zip(fps, range(0, len(res), 2)):
+            cells, countries = res[i], res[i + 1]
+            places = []
+            for gh, n in cells:
+                la, lo = _dec(gh.decode())
+                places.append({"lat": round(la, 3), "lon": round(lo, 3), "hits": int(n)})
+            if not places:
+                for c, n in countries:
+                    cc = c.decode()
+                    if cc == "XX":
+                        continue
+                    la, lo = centroid(cc)
+                    places.append({"lat": round(la, 3), "lon": round(lo, 3), "hits": int(n)})
+            out[fp] = places
+        return out
 
     async def write_snapshot(self) -> dict:
         snap = await self.build_snapshot()
@@ -372,13 +421,8 @@ class Counters:
         p.zrevrange(f"bs:bot:{fp}:countries", 0, 9, withscores=True)
         p.pfcount(f"bs:bot:{fp}:sites")
         p.zrange(f"bs:fam:{m.get('fam', '')}", 0, -1, withscores=True)
-        p.zrevrange(f"bs:bot:{fp}:gh", 0, 29, withscores=True)
-        hits, countries, n_sites, lineage, places_raw = await p.execute()
-        from .geohash import decode as _dec
-        places = []
-        for gh, n in places_raw:
-            la, lo = _dec(gh.decode())
-            places.append({"lat": round(la, 3), "lon": round(lo, 3), "hits": int(n)})
+        hits, countries, n_sites, lineage = await p.execute()
+        places = (await self.places_for([fp], limit=30)).get(fp, [])
         base = int(time.time() // 3600) * 3600
         p = self.r.pipeline(transaction=False)
         for i in range(23, -1, -1):

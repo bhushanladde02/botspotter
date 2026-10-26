@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-25 22:35
+     - Fix: hover-to-locate was slow (a request per hover) and sometimes dead (lists re-rendered every 2 s under the cursor). Snapshot now carries ``places`` for top bots/feed and lat/lon for ticker sightings, hover is instant; lists only re-render when changed and never while hovered; 180 ms leave grace; country-centroid fallback for bots without cell history
+     - Bhushan
    * - 2026-10-25 22:05
      - UI: hovering a bot (lists, feed, ticker) highlights its origin cells on the map in pink and eases the camera there; per-bot geohash buckets (``bs:bot:<fp>:gh``, fill from new hits onward)
      - Bhushan

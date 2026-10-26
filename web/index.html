@@ -432,7 +432,9 @@ function stackedSpark(canvas, series){
   $('legend').innerHTML = keys.map(k=>`<span style="--c:${CATS[k].c}">${CATS[k].label}</span>`).join('');
 }
 function renderTicker(sightings){
-  $('ticker').innerHTML = sightings.slice(0,14).map(x=>`<span onmouseenter="focusBot('${esc(slugOf(x.name))}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(slugOf(x.name))}')" style="cursor:pointer">${flag(x.country)} <i>${esc(x.name)}</i> · ${esc(x.site)} · ${ago(x.ts)}</span>`).join('');
+  const el = $('ticker');
+  if (focusSlug && el.matches(':hover')) return;   // don't yank the hovered item away (see rows())
+  el.innerHTML = sightings.slice(0,14).map(x=>`<span onmouseenter="focusBot('${esc(slugOf(x.name))}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(slugOf(x.name))}')" style="cursor:pointer">${flag(x.country)} <i>${esc(x.name)}</i> · ${esc(x.site)} · ${ago(x.ts)}</span>`).join('');
 }
 const slugOf = n => String(n||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const ago = ts => { const d = Date.now()/1000 - ts; return d<60?`${Math.max(0,d|0)}s ago`:d<3600?`${(d/60)|0}m ago`:d<86400?`${(d/3600)|0}h ago`:`${(d/86400)|0}d ago`; };
@@ -446,7 +448,13 @@ function spark(canvas, data, color){
 }
 
 // ---------- lists
-function rows(el, items, render){ el.innerHTML = items.length ? items.map(render).join('') : '<div class="row m">nothing yet — bots are shy</div>'; }
+function rows(el, items, render){
+  const html = items.length ? items.map(render).join('') : '<div class="row m">nothing yet — bots are shy</div>';
+  // Rewriting the DOM pulls the hovered row out from under the cursor (fires mouseleave,
+  // no mouseenter until the mouse moves). Only touch it when it changed and nobody is hovering.
+  if (html === el._html || (focusSlug && el.matches(':hover'))) return;
+  el._html = html; el.innerHTML = html;
+}
 const botRow = b => `<div class="row" data-slug="${esc(b.slug)}" onmouseenter="focusBot('${esc(b.slug)}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(b.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(b.slug)}.svg?size=56" alt="" loading="lazy">${esc(b.display_name||b.name)}${b.claimed?' <span title="claimed by operator" style="color:var(--acid)">✓</span>':''}</span><span class="tag ${esc(b.category)}">${esc(b.operator==='unknown'?'unknown':b.operator)}</span></span><span class="h">${fmt(b.hits)}</span></div>`;
 
 // ---------- snapshot polling (CDN-cached, 2s)
@@ -454,7 +462,7 @@ let lastSnap = null;
 async function refresh(){
   try{
     const s = await (await fetch(API+'/v1/snapshot',{cache:'no-store'})).json();
-    lastSnap = s; paint(s);
+    lastSnap = s; learnPlaces(s); paint(s);
     $('status').textContent = 'live · ' + new Date(s.ts*1000).toLocaleTimeString();
     const w = s.humans.watching_now||0; $('watching').textContent = w ? `· ${fmt(w)} ${w===1?'human':'humans'} watching now` : '';
   }catch(e){ $('status').textContent = 'reconnecting…'; }
@@ -527,7 +535,20 @@ map.on('load',()=>{
 
 // ---------- hover a bot -> light up where it comes from
 const HOME = {center:[12,22], zoom:1.7};
-let focusTimer = null, focusToken = 0, focusCache = new Map();
+let focusTimer = null, focusToken = 0, focusCache = new Map(), focusLeave = null, focusSlug = null;
+const PL = new Map();   // slug -> places, filled from every snapshot so hover needs no request
+function learnPlaces(s){
+  for (const b of (s.bots?.top||[])) if (b.slug && b.places?.length) PL.set(b.slug, b.places);
+  for (const f of (s.feed||[])) if (f.slug && f.places?.length) PL.set(f.slug, f.places);
+  for (const x of (s.sightings||[])) { const sl = slugOf(x.name); if (sl && !PL.has(sl) && x.lat != null) PL.set(sl, [{lat:x.lat, lon:x.lon, hits:1}]); }
+}
+function showPlaces(places){
+  ensureFocusLayers();
+  map.getSource('focus').setData({type:'FeatureCollection',features:places.map(pl=>({type:'Feature',geometry:{type:'Point',coordinates:[pl.lon,pl.lat]},properties:{hits:pl.hits}}))});
+  map.setPaintProperty('dots','circle-opacity',.25); map.setPaintProperty('glow','circle-opacity',.08); map.setPaintProperty('halo','circle-opacity',.03);
+  if (places.length === 1) map.easeTo({center:[places[0].lon,places[0].lat], zoom:Math.max(map.getZoom(),3.2), duration:450, essential:true});
+  else { const lons=places.map(p=>p.lon), lats=places.map(p=>p.lat); map.fitBounds([[Math.min(...lons),Math.min(...lats)],[Math.max(...lons),Math.max(...lats)]],{padding:80,maxZoom:4,duration:450,essential:true}); }
+}
 function ensureFocusLayers(){ if(!map || map.getSource('focus')) return;
   map.addSource('focus',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
   const R = ['interpolate',['linear'],['sqrt',['get','hits']],1,6,100,16,10000,30];
@@ -535,28 +556,36 @@ function ensureFocusLayers(){ if(!map || map.getSource('focus')) return;
   map.addLayer({id:'focus-ring',type:'circle',source:'focus',paint:{'circle-color':'transparent','circle-stroke-color':'#ff4dd2','circle-stroke-width':2,'circle-stroke-opacity':.9,'circle-radius':['*',R,1.6]}});
   map.addLayer({id:'focus-dot',type:'circle',source:'focus',paint:{'circle-color':'#ff4dd2','circle-stroke-color':'#07090f','circle-stroke-width':1.5,'circle-radius':['*',R,.7]}});
 }
-async function focusBot(slug){ if(!map || !slug) return; clearTimeout(focusTimer); const my = ++focusToken;
+function focusBot(slug){ if(!map || !slug) return;
+  clearTimeout(focusLeave); clearTimeout(focusTimer); const my = ++focusToken;
+  if (slug === focusSlug) return;            // re-entering the same row: keep the current view
+  focusSlug = slug;
+  const known = PL.get(slug);
+  if (known) { showPlaces(known); return; }   // instant: nothing to fetch
+  // Not in the snapshot (search result, old modal link): one short wait, then one request, cached.
   focusTimer = setTimeout(async()=>{
     try{
-      let b = focusCache.get(slug); if(!b || Date.now()-b._t > 10000){ b = await (await fetch(API+'/v1/bots/'+slug)).json(); b._t = Date.now(); focusCache.set(slug,b); }
+      let b = focusCache.get(slug);
+      if(!b){ b = await (await fetch(API+'/v1/bots/'+slug)).json(); focusCache.set(slug,b); }
       if (my !== focusToken || !b.places || !b.places.length) return;
-      ensureFocusLayers();
-      map.getSource('focus').setData({type:'FeatureCollection',features:b.places.map(pl=>({type:'Feature',geometry:{type:'Point',coordinates:[pl.lon,pl.lat]},properties:{hits:pl.hits}}))});
-      map.setPaintProperty('dots','circle-opacity',.25); map.setPaintProperty('glow','circle-opacity',.08); map.setPaintProperty('halo','circle-opacity',.03);
-      if (b.places.length === 1) map.easeTo({center:[b.places[0].lon,b.places[0].lat], zoom:Math.max(map.getZoom(),3.2), duration:700});
-      else { const lons=b.places.map(p=>p.lon), lats=b.places.map(p=>p.lat); map.fitBounds([[Math.min(...lons),Math.min(...lats)],[Math.max(...lons),Math.max(...lats)]],{padding:80,maxZoom:4,duration:700}); }
+      PL.set(slug, b.places); showPlaces(b.places);
     }catch(e){}
-  }, 120);
+  }, 40);
 }
 function unfocusBot(){ if(!map) return; clearTimeout(focusTimer); focusToken++;
-  if (map.getSource('focus')) map.getSource('focus').setData({type:'FeatureCollection',features:[]});
-  if (map.getLayer('dots')) { map.setPaintProperty('dots','circle-opacity',1); map.setPaintProperty('glow','circle-opacity',.35); map.setPaintProperty('halo','circle-opacity',.10); }
-  map.easeTo({...HOME, duration:700});
+  // Short grace period: sliding the mouse to the next row must not bounce the camera home.
+  clearTimeout(focusLeave);
+  focusLeave = setTimeout(()=>{
+    focusSlug = null;
+    if (map.getSource('focus')) map.getSource('focus').setData({type:'FeatureCollection',features:[]});
+    if (map.getLayer('dots')) { map.setPaintProperty('dots','circle-opacity',1); map.setPaintProperty('glow','circle-opacity',.35); map.setPaintProperty('halo','circle-opacity',.10); }
+    map.easeTo({...HOME, duration:500, essential:true});
+  }, 180);
 }
 
 // ---------- search + bot profile
 let timer;
-$('q').addEventListener('input', e => { clearTimeout(timer); const q=e.target.value.trim(); if(!q){$('results').style.display='none';return;} timer=setTimeout(async()=>{ const r=await (await fetch(API+'/v1/search?q='+encodeURIComponent(q))).json(); const el=$('results'); el.innerHTML = r.results.length? r.results.map(b=>`<div onclick="openBot('${esc(b.slug)}')" style="display:flex;align-items:center"><img class="av" src="${API}/avatar/${esc(b.slug)}.svg?size=48" alt="">${esc(b.display_name||b.name)}${b.display_name?` <span class="m">(${esc(b.name)})</span>`:''} <span class="m">· ${esc(b.operator)} · ${fmt(b.hits)} hits</span></div>`).join('') : '<div class="m">no bot by that name — yet</div>'; el.style.display='block'; },180); });
+$('q').addEventListener('input', e => { clearTimeout(timer); const q=e.target.value.trim(); if(!q){$('results').style.display='none';return;} timer=setTimeout(async()=>{ const r=await (await fetch(API+'/v1/search?q='+encodeURIComponent(q))).json(); const el=$('results'); el.innerHTML = r.results.length? r.results.map(b=>`<div onclick="openBot('${esc(b.slug)}')" onmouseenter="focusBot('${esc(b.slug)}')" onmouseleave="unfocusBot()" style="display:flex;align-items:center"><img class="av" src="${API}/avatar/${esc(b.slug)}.svg?size=48" alt="">${esc(b.display_name||b.name)}${b.display_name?` <span class="m">(${esc(b.name)})</span>`:''} <span class="m">· ${esc(b.operator)} · ${fmt(b.hits)} hits</span></div>`).join('') : '<div class="m">no bot by that name — yet</div>'; el.style.display='block'; },180); });
 document.addEventListener('click', e => { if(!e.target.closest('.search')) $('results').style.display='none'; });
 let currentSlug = '';
 async function openBot(slug){

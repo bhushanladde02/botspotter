@@ -56,13 +56,13 @@ Read API (public, Redis-only, cache headers on everything)
      - returns
      - cache
    * - ``GET /v1/snapshot``
-     - counters, top bots, categories, hourly series, feed, sightings, humans, network
+     - counters, top bots, categories, hourly series, feed, sightings, humans, network; top bots and feed items carry ``places`` and sightings carry ``lat``/``lon`` so the page focuses the map on hover without a request
      - 2 s
    * - ``GET /v1/map?precision=2..4&limit=``
      - geohash buckets ``{gh, lat, lon, hits}``
      - 5 s
    * - ``GET /v1/bots/{slug}``
-     - bot profile: name, operator, category, first/last seen, last country/site, hits, sites, countries, hourly, recent sightings, ``places`` (geohash-3 cells with hit counts, for the map focus), evolved_from
+     - bot profile: name, operator, category, first/last seen, last country/site, hits, sites, countries, hourly, recent sightings, ``places`` (geohash-3 cells with hit counts, for the map focus; falls back to country centroids for bots recorded before cell tracking), evolved_from
      - 10 s
    * - ``GET /v1/search?q=&limit=``
      - prefix then substring match on names
