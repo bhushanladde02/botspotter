@@ -1,0 +1,43 @@
+# Merge gate: deterministic safety review of every PR before a human looks at it.
+# Fails fast on secrets, destructive ops, identity-secret rotation, weakened gates,
+# RCE patterns and unknown outbound hosts; warns on workflow/dependency/privacy changes.
+# Required status check "gate" in the main ruleset (deploy/github/main-ruleset.json).
+# Install: cp deploy/github/workflows/gate.yml .github/workflows/gate.yml
+name: gate
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: safety review of the diff
+        id: gate
+        env:
+          GATE_OK: ${{ contains(github.event.pull_request.labels.*.name, 'gate-change-approved') && '1' || '0' }}
+        run: |
+          set +e
+          python scripts/pr_gate.py "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" | tee gate.txt
+          echo "rc=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+      - name: report on the PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RC: ${{ steps.gate.outputs.rc }}
+        run: |
+          { if [ "$RC" = "0" ]; then echo "### ✅ gate: clean"; else echo "### ⛔ gate: BLOCKED — fix and push again, or open a new MR with the change explained"; fi
+            echo; echo '```'; cat gate.txt; echo '```'
+            echo; echo "_Rules: scripts/pr_gate.py · to change an approval-gate file deliberately, add the label \`gate-change-approved\` (owner only)._"; } > comment.md
+          cat comment.md >> "$GITHUB_STEP_SUMMARY"
+          # one gate comment per PR, edited in place
+          cid=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --jq '.[] | select(.user.type=="Bot") | select(.body | startswith("### ")) | select(.body | contains("gate:")) | .id' | head -1)
+          if [ -n "$cid" ]; then gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$cid" -F body=@comment.md >/dev/null
+          else gh pr comment "${{ github.event.pull_request.number }}" --body-file comment.md; fi
+          [ "$RC" = "0" ]

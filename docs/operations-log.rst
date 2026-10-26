@@ -10,8 +10,11 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 10:30
+     - Process: mandatory MR flow documented (docs/cicd.rst "The flow"); ``scripts/mr.sh`` (tests + gate + commit + push + PR); safety gate ``scripts/pr_gate.py`` + ``gate.yml`` as a required check (secrets, destructive ops, salt rotation, gate weakening, RCE, unknown hosts); ``alarm.yml`` opens an owner-assigned incident issue when ``ci``/``deploy`` fail on main, with last-good SHA and a ``rollback.yml`` one-click redeploy (still behind the production approval)
+     - Bhushan
    * - 2026-10-26 09:50
-     - Process: approval gates mandatory — branch protection on ``main`` (PR + green ``ci``/``guard``, no bypass) and required reviewer on the ``production`` environment (deploy pauses for owner approval). All changes now arrive as branches/PRs (docs/cicd.rst "Approval gates")
+     - Process (strict): nothing merges to ``main`` or deploys without the owner's approval — ruleset on ``main`` (PR + 1 code-owner review via ``.github/CODEOWNERS`` + green ``test``/``no-secrets``, admin-only bypass), owner as required reviewer on the ``production`` environment, Actions token read-only, fork PRs need approval. Applied by ``deploy/github/apply-gates.sh``; all changes now arrive as branches/PRs (docs/cicd.rst "Approval gates")
      - Bhushan
    * - 2026-10-26 09:45
      - **Incident** (≈6 min): deploy of the ledger took api + aggregator down — ``migrations.sql`` splitter dropped the first statement (chunk began with the file's comment header), so ``ADD COLUMN vs`` never ran and the next statement failed; ``store.start()`` raised in both lifespans. Recovered by manual ``git checkout 259a674`` on the VM. Fixes: comment lines stripped before splitting (``split_sql`` + test); migration failures logged, never fatal; ``remote.sh`` now auto-rolls back to the previous revision when health or smoke fails (``ROLLBACK=0`` to disable)

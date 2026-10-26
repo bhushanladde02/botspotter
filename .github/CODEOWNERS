@@ -1,0 +1,3 @@
+# Every file needs the owner's review before it can be merged (enforced by the
+# "main" ruleset: required code-owner approval). See docs/cicd.rst "Approval gates".
+*  @bhushanladde02
