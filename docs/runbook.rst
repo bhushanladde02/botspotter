@@ -181,10 +181,28 @@ Monthly, first week of the month, into ``private/evidence/YYYY-MM/`` (gitignored
 
 Each export is dated by the vendor, which is what makes it credible later; keep the originals unedited.
 
+Enrollment (self-serve sensors)
+-------------------------------
+
+Site owners enrol themselves at ``/sensors`` (:doc:`sensors`). One-time setup:
+
+1. GitHub → Settings → Developer settings → OAuth Apps → **New OAuth App**: name ``BotSpotter``, homepage
+   ``https://botspotter.app``, callback ``https://botspotter.app/auth/github/callback``. Generate a client secret.
+2. On the VM, add to ``~/botspotter/.env``: ``BS_GITHUB_CLIENT_ID=…`` and ``BS_GITHUB_CLIENT_SECRET=…`` (both into
+   ``private/notes.md`` too), then ``docker compose -f docker-compose.yml -f docker-compose.vm.yml up -d api``.
+   ``remote.sh`` already generated ``BS_SESSION_SECRET`` and ``BS_PUBLIC_URL``. Until the client id is set the page
+   shows the e-mail route instead of the sign-in button.
+3. Check: ``/v1/me`` returns ``"oauth_enabled": true``; sign in yourself and enrol a test domain.
+
+Operations: ``bs:site:<domain>`` holds status/owner/key hash; ``bs:sensor_keys`` is what ingest reads (rotations and
+removals take effect within 60 s). Rotating ``BS_SESSION_SECRET`` signs everyone out. To ban a site, ``HDEL
+bs:sensor_keys <hash>`` and ``DEL bs:site:<domain>``. Limits: 5 sites per account, 10 verifications/hour.
+
 Sensors on the VM
 -----------------
 
 -  ``botspotter-portal``: the API's own middleware (every request to botspotter.app).
+-  self-serve sites: enrolled at ``/sensors`` (above); their locations come from GeoIP of the domain.
 -  ``sharpen``: Caddy → ``sensor-vector`` sidecar (:doc:`sensors` "Caddy sidecar"). Key = the ``sharpen`` entry of
    ``BS_SENSOR_KEYS`` (``private/notes.md``), exported as ``SHARPEN_SENSOR_KEY`` in ``.env`` by ``remote.sh``.
    Troubleshoot: ``logs sensor-vector`` (VRL errors), ``docker exec deploy-caddy-1 caddy validate`` after editing the

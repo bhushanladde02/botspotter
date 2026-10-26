@@ -1,9 +1,25 @@
 Add your site as a sensor
 =========================
 
-A sensor reports which **bots** visit your site. It never sends page content, cookies, header values, or human visitors. You get a spot on the leaderboard and you help name every new AI crawler on the internet.
+Two clicks and one paste, self-serve, at https://botspotter.app/sensors:
 
-You need a sensor key (``X-BS-Key``). Ask for one; it maps to your site id.
+1. **Sign in with GitHub.** A key is only ever issued to an authenticated person who has proven control of the
+   domain; we store the GitHub id, login and avatar — no e-mail. (No GitHub? e-mail ``hello@botspotter.app`` and a
+   key is issued by hand.)
+2. **Add the domain, prove it, click Verify.** Either a DNS TXT record ``_botspotter.<domain>`` with value
+   ``botspotter-verify=<token>`` or a file at ``https://<domain>/.well-known/botspotter-verify.txt`` containing that
+   line. Verification is automatic; on success the sensor key is generated and shown once. The site's map location
+   comes from its DNS/GeoIP — nothing to type.
+3. **Paste the snippet for your stack** (shown with the key filled in): Caddy ``log`` block + Vector sidecar,
+   Python middleware (FastAPI/Starlette/Flask/Django), Nginx/Apache + Vector, or raw ``POST /v1/ingest``. The page
+   polls and says "first bot caught" the moment one arrives.
+
+*My sites* lists your domains with hits and last sighting; *Rotate key* revokes the old key within a minute
+(ingest caches lookups for 60 s); *Remove* revokes and deletes the enrolment. Five sites per account, ten
+verification attempts an hour. Implementation: ``botspotter/enroll.py``; keys are stored only as SHA-256
+(``bs:sensor_keys``) and ingest consults that hash for any key not in ``BS_SENSOR_KEYS``.
+
+Manual keys (``BS_SENSOR_KEYS`` in ``.env``) keep working unchanged; the self-serve path adds to them.
 
 .. _python-apps-fastapi-starlette-flask-django--zero-dependencies:
 
@@ -59,8 +75,8 @@ The wire format (for any other stack)
 
 A bare JSON array or newline-delimited JSON is also accepted. Max 1000 events per request. Response ``202 {"accepted": n, "bots": m, "site": "..."}``.
 
-Caddy sidecar (any site behind Caddy, no code; how sharpenscore.com reports)
------------------------------------------------------------------------------
+Caddy sidecar (any site behind Caddy, no code; how sharpen.com reports)
+------------------------------------------------------------------------
 
 Caddy streams its JSON access log over TCP to a small Vector container next to BotSpotter; Vector keeps non-browser
 requests, reduces them to the wire format (header *names*, UA, IP, method, status, robots.txt flag) and posts them to
@@ -77,17 +93,11 @@ ingest on the Docker network. The site's own containers are untouched.
 
    ``soft_start`` means Caddy loads and serves even if Vector is unreachable (those log lines are dropped). Reload Caddy
    (``docker exec deploy-caddy-1 caddy reload --config /etc/caddy/Caddyfile`` or your usual deploy).
-2. BotSpotter side (already in ``docker-compose.vm.yml`` as ``sensor-vector`` for ``sharpenscore.com``): config
-   ``sensors/caddy/vector.toml``; env ``BS_HOST`` (only lines whose ``Host`` *contains* this string are forwarded —
-   it must be the real host, ``sharpenscore.com``, not an abbreviation: a value that does not match drops every line
-   with no error), ``BS_KEY`` (the site's sensor key — ``remote.sh`` derives ``SHARPEN_SENSOR_KEY`` from
-   ``BS_SENSOR_KEYS``), ``BS_ENDPOINT``.
+2. BotSpotter side (already in ``docker-compose.vm.yml`` as ``sensor-vector`` for ``sharpen.com``): config
+   ``sensors/caddy/vector.toml``; env ``BS_HOST`` (only that host's lines are forwarded), ``BS_KEY`` (the site's sensor
+   key — ``remote.sh`` derives ``SHARPEN_SENSOR_KEY`` from ``BS_SENSOR_KEYS``), ``BS_ENDPOINT``.
 3. Check: ``docker compose -f docker-compose.yml -f docker-compose.vm.yml logs --tail 20 sensor-vector`` (no VRL
-   errors — a container that keeps restarting is a VRL compile error, and the log names the line. ``vector validate``
-   does *not* compile VRL, so the pre-deploy check is to start it for a few seconds: ``BS_KEY=k BS_HOST=h
-   BS_ENDPOINT=http://127.0.0.1:1 vector --config sensors/caddy/vector.toml`` and look for *Vector has started*) and
-   the Live page's "Sensors with most catches" card shows ``sharpen`` within minutes. To trigger a hit yourself:
-   ``curl -A "Mozilla/5.0 (compatible; GPTBot/1.0)" https://sharpenscore.com/robots.txt``.
+   errors) and the Live page's "Sensors with most catches" card shows ``sharpen`` within minutes.
 
 Another host on the same Caddy = another ``log`` block in its site and a second ``sensor-vector`` service with its
 own ``BS_HOST``/``BS_KEY`` (or one service and a routing transform — see the comments in the TOML).

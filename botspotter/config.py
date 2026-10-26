@@ -62,6 +62,13 @@ class Settings:
     # Owner key for the audience ledger (/admin, /v1/admin/*). Unset = those routes 404.
     admin_key: str = field(default_factory=lambda: _env("BS_ADMIN_KEY", ""))
 
+    # Self-serve sensor enrollment: GitHub OAuth app (docs/runbook.rst "Enrollment") and the
+    # secret that signs session cookies. Unset client id = enrollment UI says "not enabled".
+    github_client_id: str = field(default_factory=lambda: _env("BS_GITHUB_CLIENT_ID", ""))
+    github_client_secret: str = field(default_factory=lambda: _env("BS_GITHUB_CLIENT_SECRET", ""))
+    session_secret: str = field(default_factory=lambda: _env("BS_SESSION_SECRET", ""))
+    public_url: str = field(default_factory=lambda: _env("BS_PUBLIC_URL", "https://botspotter.app"))
+
     # New-bot discovery: unseen fingerprint on N distinct sites within window.
     discovery_min_sites: int = field(default_factory=lambda: _env_int("BS_DISCOVERY_MIN_SITES", 3))
     discovery_window_s: int = field(default_factory=lambda: _env_int("BS_DISCOVERY_WINDOW_S", 86400))

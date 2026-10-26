@@ -51,6 +51,10 @@ A one-person scraper running from a home connection is identified by ``UA family
 Sensor owners
 -------------
 
+**Accounts (self-serve enrollment, since 2026-10-26):** GitHub OAuth with no scopes; stored: GitHub numeric id, login,
+avatar URL, enrolled domains, verification time/method, SHA-256 of each sensor key. No e-mail, no tokens kept. The
+session is a signed stateless cookie (30 days). Removing a site deletes its record and revokes its key.
+
 The site owner installs the sensor knowingly; their key maps to a ``site_id`` that is shown publicly on the leaderboard. Keys are revocable (remove from ``BS_SENSOR_KEYS`` / ``sensors`` table).
 
 Legal posture
