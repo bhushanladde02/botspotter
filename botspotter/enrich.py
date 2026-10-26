@@ -17,6 +17,7 @@ from .fingerprint import make_fingerprint, name_from_digest
 from .geo import Geo
 from .geohash import encode as geohash
 from .models import BotEvent, PortalVisit, SensorHit
+from .verify import Verifier
 
 
 _UA_HOST_RE = re.compile(r"https?://([A-Za-z0-9.-]+\.[A-Za-z]{2,})|[\w.+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})")
@@ -83,9 +84,10 @@ def first_language(accept_language: str) -> str:
 
 
 class Enricher:
-    def __init__(self, geo: Geo | None = None, classifier: Classifier | None = None):
+    def __init__(self, geo: Geo | None = None, classifier: Classifier | None = None, verifier: Verifier | None = None):
         self.geo = geo or Geo()
         self.classifier = classifier or Classifier()
+        self.verifier = verifier or Verifier()
 
     def bot_event(self, hit: SensorHit, site: str) -> BotEvent | None:
         cls = self.classifier.classify(hit.ua, hit.headers)
@@ -114,6 +116,10 @@ class Enricher:
             hit_robots=hit.path.rstrip("/").endswith("robots.txt"),
             ua_host=ua_host(hit.ua),
             homepage=cls.homepage,
+            city=g.city,
+            org=g.org[:80],
+            cloud=g.cloud,
+            verified=self.verifier.verdict(cls.operator, hit.ip) if cls.kind == "known" else "",
         )
 
     def portal_visit(self, ip: str, ua: str, cf_country: str, page: str = "/", referrer: str = "",

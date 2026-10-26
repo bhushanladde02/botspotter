@@ -4,6 +4,7 @@
 #   gh secret set VM_SSH_KEY  < ~/.ssh/sharpen_vm
 #   gh secret set VM_HOST     --body 129.213.153.181
 #   gh secret set VM_USER     --body ubuntu
+#   gh secret set MAXMIND_ACCOUNT_ID / MAXMIND_LICENSE_KEY   (GeoLite2 City+ASN for the live map; optional)
 # Manual run: Actions → deploy → Run workflow (optionally with a branch/ref).
 name: deploy
 on:
@@ -37,8 +38,10 @@ jobs:
       - name: deploy
         env:
           REF: ${{ github.event.inputs.ref || 'main' }}
+          MM_ID: ${{ secrets.MAXMIND_ACCOUNT_ID }}
+          MM_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
         run: |
-          ssh -i ~/.ssh/vm "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" "GIT_REF=$REF bash -s" < deploy/remote.sh
+          ssh -i ~/.ssh/vm "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" "GIT_REF=$REF MAXMIND_ACCOUNT_ID=$MM_ID MAXMIND_LICENSE_KEY=$MM_KEY bash -s" < deploy/remote.sh
       - name: verify public URL
         run: |
           for i in 1 2 3 4 5 6; do

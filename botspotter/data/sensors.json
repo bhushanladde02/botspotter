@@ -1,0 +1,10 @@
+{
+  "_comment": "Where each sensor site is served from, for the live map (arc destination). Owners give a city when requesting a key; coordinates are the city's, never a street address. A runtime copy in BS_RUNTIME_DIR overrides this file.",
+  "sites": {
+    "botspotter-portal": {"city": "Ashburn, VA", "lat": 39.04, "lon": -77.49, "url": "https://botspotter.app"},
+    "sharpen":           {"city": "Ashburn, VA", "lat": 39.04, "lon": -77.49, "url": "https://sharpen.com"},
+    "bhushan-profile":   {"city": "San Francisco, CA", "lat": 37.77, "lon": -122.42, "url": "https://bhushanladde02.github.io"},
+    "recovery-routes":   {"city": "Ashburn, VA", "lat": 39.04, "lon": -77.49, "url": "https://recoveryroutes.org"},
+    "dev-site":          {"city": "Folsom, CA", "lat": 38.68, "lon": -121.18, "url": "http://localhost"}
+  }
+}

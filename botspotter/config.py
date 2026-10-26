@@ -47,6 +47,10 @@ class Settings:
     # GeoIP: optional MaxMind GeoLite2-City.mmdb. Without it we fall back to
     # Cloudflare's CF-IPCountry header + country centroids (still free).
     geoip_db: str = field(default_factory=lambda: _env("BS_GEOIP_DB", ""))
+    geoip_asn_db: str = field(default_factory=lambda: _env("BS_GEOIP_ASN_DB", ""))
+    # Runtime data refreshed on the VM outside git (crawler IP ranges, sensor locations);
+    # files there override the packaged copies in botspotter/data/.
+    runtime_dir: str = field(default_factory=lambda: _env("BS_RUNTIME_DIR", ""))
 
     # Naming salt: changing it renames every bot. Never rotate casually.
     naming_salt: str = field(default_factory=lambda: _env("BS_NAMING_SALT", "botspotter-v1"))

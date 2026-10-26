@@ -2,11 +2,25 @@
 # Caddy obtains the certificate automatically (HTTP-01 works behind Cloudflare
 # with SSL mode "Full"). After first success, switch Cloudflare to Full (strict).
 botspotter.app, www.botspotter.app {
-	encode zstd gzip
+	# Never compress the live event stream (compression buffers it); everything else yes.
+	encode zstd gzip {
+		match {
+			header Content-Type text/html*
+			header Content-Type text/css*
+			header Content-Type text/plain*
+			header Content-Type text/csv*
+			header Content-Type text/xml*
+			header Content-Type application/json*
+			header Content-Type application/javascript*
+			header Content-Type application/xml*
+			header Content-Type image/svg+xml*
+		}
+	}
 	header -Server
 	@ingest path /v1/ingest /v1/beacon
 	reverse_proxy @ingest bs-ingest:8001
 	reverse_proxy bs-api:8000 {
 		header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+		flush_interval -1
 	}
 }

@@ -136,6 +136,25 @@ export; API: ``/v1/admin/visitors``, ``/v1/admin/visitors.csv``, ``/v1/admin/vis
    on every boot of api and aggregator; a failing migration is logged and skipped, never fatal. Comment lines are
    stripped before statements are split on ``;``. ``tests/test_packaging.py`` checks the file ships and parses.
 
+GeoIP + crawler ranges (live map data)
+--------------------------------------
+
+Runtime data lives in ``~/botspotter-data`` on the VM (``DATA_DIR`` in ``.env``), mounted read-only at ``/data``.
+``deploy/refresh-data.sh`` fills it on every deploy and every Wednesday 07:23 UTC (cron, log in
+``~/botspotter-backups/refresh.log``):
+
+-  ``GeoLite2-City.mmdb``, ``GeoLite2-ASN.mmdb`` — MaxMind GeoLite2. Needs the GitHub secrets ``MAXMIND_ACCOUNT_ID`` and
+   ``MAXMIND_LICENSE_KEY`` (account in ``private/notes.md``); the deploy passes them to ``remote.sh``, which also stores
+   them in ``~/.botspotter-maxmind`` (0600) for the cron. Without them the map stays at country centroids.
+-  ``crawler_ranges.json`` — built by ``jobs/crawler_ranges.py`` from the operators' official IP lists
+   (``botspotter/verify.py`` ``SOURCES``). A vendor outage keeps the previous ranges for that operator.
+-  ``sensors.json`` — sensor site locations (copied from the package on first run; edit the ``/data`` copy to add a
+   site: ``{"site": {"city": "...", "lat": .., "lon": .., "url": ".."}}``, then ``docker compose ... up -d api aggregator``).
+
+When a file changes the script recreates ingest/api/aggregator (they read the data at start). Manual run:
+``MAXMIND_ACCOUNT_ID=.. MAXMIND_LICENSE_KEY=.. bash deploy/refresh-data.sh``. Check: ``ls -la ~/botspotter-data``;
+the Live page's "Where bots live" card fills within minutes of the first hits.
+
 Evidence routine (reach, for any future claim)
 ----------------------------------------------
 

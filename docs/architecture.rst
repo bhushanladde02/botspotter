@@ -106,3 +106,29 @@ Failure modes
 +-------------------------------------------+---------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------+
 | Ingest overloaded                         | Cloudflare/Nginx rate-limit 429                                                                               | ``docker compose up -d --scale ingest=3``                               |
 +-------------------------------------------+---------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------+
+
+Live map (since 2026-10-26)
+---------------------------
+
+The map is the product's front door, so it shows *motion*, not pins. Every sighting is an arc from where the bot
+lives to the site it is crawling, drawn within about a second of the hit.
+
+- **Origin**: GeoLite2-City (``BS_GEOIP_DB``) gives city-level coordinates and the city name; GeoLite2-ASN
+  (``BS_GEOIP_ASN_DB``) gives the network, reduced to a hosting label (``geo.cloud_label``: AWS, Azure, GCP, OCI,
+  Hetzner, …). Without the databases the origin is the country centroid, as before. Both files are downloaded on the
+  VM by ``deploy/refresh-data.sh`` (MaxMind account, EULA forbids redistribution) and refreshed weekly by cron.
+- **Destination**: the sensor site's city from ``sensors.json`` (``botspotter/data/`` packaged, ``/data`` on the VM
+  overrides). Owners give a city when they request a key; never an address.
+- **Impostors** (``verify.py``): operators that publish their crawler IP ranges (OpenAI, Google, Microsoft, Apple,
+  Perplexity, DuckDuckGo) are checked in-process before the IP is discarded. ``BotEvent.verified`` is ``verified``,
+  ``impostor`` or ``""`` (no published ranges, so no claim). Ranges are built by ``jobs/crawler_ranges.py`` from the
+  official URLs; the packaged copy is empty so a fresh checkout never calls anything an impostor.
+- **Stream**: the aggregator publishes each sighting on Redis pub/sub ``bs:live`` (origin, destination, name, slug,
+  category, verified, cloud, city). ``GET /v1/live`` relays it as server-sent events; Caddy proxies it unbuffered
+  (``flush_interval -1``, no compression for ``text/event-stream``). Viewers reconnect automatically.
+- **Rendering**: a 2-D canvas over MapLibre (``web/index.html``, "LIVE" section). Great-circle arcs lifted in screen
+  space, colored by category (impostors red), a comet head with the label, a ripple on arrival, sensor sites as
+  diamonds that flare when hit. Everything is re-projected per frame, so panning and zooming cost nothing extra;
+  400 arcs cap. Hovering a bot anywhere on the page ("follow") dims every other arc. Optional sound.
+- New snapshot fields: ``trust`` (verified/impostor counters, impostors by claimed operator), ``by_cloud``,
+  ``network.sites``. ``GET /v1/sites`` lists sensor locations.

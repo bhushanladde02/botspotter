@@ -33,11 +33,14 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 
-BLOCK_PATHS = re.compile(r"^(private/|\.sync/|\.env($|\.)|.*\.(pem|key|p12|pfx|tgz|tar\.gz|zip)$|.*id_rsa|.*id_ed25519)")
+BLOCK_PATHS = re.compile(r"^(private/|\.sync/|\.env($|\.(?!example$))|.*\.(pem|key|p12|pfx|tgz|tar\.gz|zip)$|.*id_rsa|.*id_ed25519)")
 ALLOWED_HOSTS = ("botspotter.app", "github.com", "api.github.com", "openfreemap.org", "tiles.openfreemap.org",
                  "cdn.jsdelivr.net", "unpkg.com", "fonts.googleapis.com", "fonts.gstatic.com", "web.archive.org",
                  "search.google.com", "www.w3.org", "schema.org", "creativecommons.org", "example.org", "example.com",
-                 "localhost", "127.0.0.1", "redis", "redpanda", "postgres", "api", "ingest", "edge")
+                 "localhost", "127.0.0.1", "redis", "redpanda", "postgres", "api", "ingest", "edge",
+                 # documented crawler-range sources (botspotter/verify.py SOURCES) and MaxMind downloads
+                 "openai.com", "developers.google.com", "www.bing.com", "search.developer.apple.com", "www.perplexity.com",
+                 "duckduckgo.com", "commoncrawl.org", "download.maxmind.com", "maxmind.com")
 
 SECRET_RES = [
     ("private key", re.compile(r"-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----")),

@@ -1,0 +1,5 @@
+{
+  "_comment": "Published crawler IP ranges per operator. Empty in git on purpose: built on the server by jobs/crawler_ranges.py from the official URLs in botspotter/verify.py (SOURCES) and refreshed weekly. With no ranges every verdict is '' (unknown), never 'impostor'.",
+  "_updated": "",
+  "ranges": {}
+}
