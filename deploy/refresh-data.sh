@@ -34,7 +34,11 @@ python3 "$APP_DIR/jobs/crawler_ranges.py" "$DATA_DIR/crawler_ranges.json" || ech
 after=$(md5sum "$DATA_DIR/crawler_ranges.json" 2>/dev/null | cut -d' ' -f1 || true)
 [ "$before" != "$after" ] && changed=1
 
-[ -f "$DATA_DIR/sensors.json" ] || cp "$APP_DIR/botspotter/data/sensors.json" "$DATA_DIR/sensors.json"
+# Sensor locations follow the packaged file unless the owner opted out by creating
+# $DATA_DIR/sensors.json.custom (then the runtime copy is hand-maintained; see runbook).
+if [ ! -f "$DATA_DIR/sensors.json.custom" ] && ! cmp -s "$APP_DIR/botspotter/data/sensors.json" "$DATA_DIR/sensors.json"; then
+  cp "$APP_DIR/botspotter/data/sensors.json" "$DATA_DIR/sensors.json"; changed=1; echo "sensors.json: updated from package"
+fi
 chmod -R a+rX "$DATA_DIR"
 ls -la "$DATA_DIR"
 if [ "$changed" = 1 ] && [ "${RESTART:-1}" = 1 ]; then

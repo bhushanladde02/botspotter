@@ -90,3 +90,10 @@ def test_env_example_is_allowed_but_env_files_are_not():
     assert not pr_gate.scan(*diff_for(".env.example", ["BS_ADMIN_KEY="])).blocking
     for p in (".env", ".env.prod", ".env.local"):
         assert pr_gate.scan(*diff_for(p, ["x=1"])).blocking, p
+
+
+def test_gate_allow_marker_is_explicit_and_never_covers_secrets():
+    rep = pr_gate.scan(*diff_for("deploy/rehearse.sh", ['  $COMPOSE down -v   # gate:allow throwaway CI project']))
+    assert not rep.blocking and "gate:allow used" in rules(rep)
+    rep = pr_gate.scan(*diff_for("deploy/x.sh", ['TOKEN="' + "A" * 24 + '"  # gate:allow']))
+    assert rep.blocking   # secrets are never overridable

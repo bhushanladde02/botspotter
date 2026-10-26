@@ -58,3 +58,34 @@ The wire format (for any other stack)
    ]}
 
 A bare JSON array or newline-delimited JSON is also accepted. Max 1000 events per request. Response ``202 {"accepted": n, "bots": m, "site": "..."}``.
+
+Caddy sidecar (any site behind Caddy, no code; how sharpen.com reports)
+------------------------------------------------------------------------
+
+Caddy streams its JSON access log over TCP to a small Vector container next to BotSpotter; Vector keeps non-browser
+requests, reduces them to the wire format (header *names*, UA, IP, method, status, robots.txt flag) and posts them to
+ingest on the Docker network. The site's own containers are untouched.
+
+1. In the site's Caddyfile block add::
+
+      log {
+          output net tcp/bs-vector:9000 {
+              soft_start
+          }
+          format json
+      }
+
+   ``soft_start`` means Caddy loads and serves even if Vector is unreachable (those log lines are dropped). Reload Caddy
+   (``docker exec deploy-caddy-1 caddy reload --config /etc/caddy/Caddyfile`` or your usual deploy).
+2. BotSpotter side (already in ``docker-compose.vm.yml`` as ``sensor-vector`` for ``sharpen.com``): config
+   ``sensors/caddy/vector.toml``; env ``BS_HOST`` (only that host's lines are forwarded), ``BS_KEY`` (the site's sensor
+   key — ``remote.sh`` derives ``SHARPEN_SENSOR_KEY`` from ``BS_SENSOR_KEYS``), ``BS_ENDPOINT``.
+3. Check: ``docker compose -f docker-compose.yml -f docker-compose.vm.yml logs --tail 20 sensor-vector`` (no VRL
+   errors) and the Live page's "Sensors with most catches" card shows ``sharpen`` within minutes.
+
+Another host on the same Caddy = another ``log`` block in its site and a second ``sensor-vector`` service with its
+own ``BS_HOST``/``BS_KEY`` (or one service and a routing transform — see the comments in the TOML).
+
+Note on identity: Caddy serialises headers as a JSON object, so header *order* is Go-map order; fingerprints from Caddy
+sensors are consistent with each other but can differ from the Python middleware's for the same bot. Known bots are
+unaffected (identity = UA family); only unknown bots could appear twice across the two sensor types.

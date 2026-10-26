@@ -25,6 +25,8 @@ Rules (B = block, W = warn — warnings never fail, they are listed for the revi
   W workflow files changed, Dockerfile base image changed, dependencies added/changed
   W privacy-relevant text or storage changed (terms/privacy wording, models.PortalVisit, enrich.portal_visit)
   W large deletions (> 300 lines removed in one file) or binary files added
+  W a line carrying `gate:allow <reason>` skips the destructive/RCE rules (never the secret rules) — explicit,
+    visible to the reviewer; use it only for throwaway/test contexts (e.g. tearing down the CI rehearsal stack)
 """
 from __future__ import annotations
 
@@ -172,6 +174,11 @@ def scan(diff: str, numstat: str, names: list[str]) -> Report:
             for rule, rx in SECRET_RES:
                 if rx.search(text) and "example" not in text.lower() and "<" not in text:
                     rep.add("B", f"secret: {rule}", path, n, text)
+            if "gate:allow" in text and is_code and path not in SELF_FILES and not path.startswith("docs/"):
+                # Explicit, auditable per-line override for destructive/RCE rules (never secrets):
+                #   docker compose down -v   # gate:allow throwaway CI project
+                rep.add("W", "gate:allow used", path, n, text)
+                continue
             if is_code and path not in SELF_FILES:
                 for rule, rx in DESTRUCTIVE_RES:
                     if rx.search(text) and not text.lstrip().startswith(("#", "//", "--", "*", "-  ", ".. ")):

@@ -10,7 +10,9 @@ export COMPOSE_PROJECT_NAME=bsrehearse
 COMPOSE="docker compose -f docker-compose.yml"
 # A developer's real .env is set aside for the run and restored afterwards (CI has none).
 [ -f .env ] && mv .env .env.pre-rehearse
-cleanup() { $COMPOSE down -v --remove-orphans >/dev/null 2>&1 || true; rm -f .env .env.rehearse; [ -f .env.pre-rehearse ] && mv .env.pre-rehearse .env; true; }
+cleanup() {
+  $COMPOSE down -v --remove-orphans >/dev/null 2>&1 || true   # gate:allow throwaway project "bsrehearse" in CI, never production volumes
+  rm -f .env .env.rehearse; [ -f .env.pre-rehearse ] && mv .env.pre-rehearse .env; true; }
 trap cleanup EXIT
 
 step() { printf '\n== %s\n' "$*"; }

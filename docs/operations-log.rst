@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 11:45
+     - Feature (PR pending): sharpen.com becomes the second sensor — Caddy JSON log over TCP → ``sensor-vector`` sidecar (``sensors/caddy/vector.toml``) → ingest; ``remote.sh`` wires ``SHARPEN_SENSOR_KEY`` from ``BS_SENSOR_KEYS``. Requires one ``log`` block in Sharpen's Caddyfile (docs/sensors.rst "Caddy sidecar"); Caddy ``soft_start`` keeps Sharpen unaffected if Vector is down. Gate: ``gate:allow <reason>`` per-line override for destructive/RCE rules (never secrets), used for the CI rehearsal teardown
+     - Bhushan
    * - 2026-10-26 11:30
      - Hardening after a visible ~30 s gap on the 11:03 deploy: Caddy ``lb_try_duration 25s`` on api/ingest proxies (retry through the container recreate); ``deploy/rehearse.sh`` runs the real stack + production smoke in CI as required check ``rehearse``; verifier status (operators, ranges date) in ``snapshot.trust`` and honest wording on the "Real or impostor?" card
      - Bhushan

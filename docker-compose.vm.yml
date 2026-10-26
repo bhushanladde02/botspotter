@@ -32,6 +32,26 @@ services:
     environment: { BS_RUNTIME_DIR: /data }
     deploy: { resources: { limits: { memory: 192M } } }
 
+  # Sensor for sharpen.com (same VM, same Caddy): Caddy logs over TCP -> Vector -> ingest.
+  # Caddy side: a `log { output net tcp/bs-vector:9000 { soft_start } format json }` block
+  # in the sharpen.com site (docs/sensors.rst "Caddy sidecar"). SHARPEN_SENSOR_KEY is derived
+  # from BS_SENSOR_KEYS by deploy/remote.sh.
+  sensor-vector:
+    image: timberio/vector:0.42.0-alpine
+    command: ["--config", "/etc/vector/vector.toml"]
+    volumes: ["./sensors/caddy/vector.toml:/etc/vector/vector.toml:ro"]
+    environment:
+      BS_KEY: ${SHARPEN_SENSOR_KEY:-}
+      BS_HOST: sharpen.com
+      BS_ENDPOINT: http://ingest:8001/v1/ingest
+      VECTOR_LOG: warn
+    depends_on: [ingest]
+    networks:
+      default: {}
+      web: { aliases: [bs-vector] }
+    restart: unless-stopped
+    deploy: { resources: { limits: { memory: 96M } } }
+
   redis:
     command: ["redis-server", "--maxmemory", "192mb", "--maxmemory-policy", "noeviction",
               "--save", "60", "1000", "--appendonly", "yes"]

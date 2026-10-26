@@ -148,8 +148,9 @@ Runtime data lives in ``~/botspotter-data`` on the VM (``DATA_DIR`` in ``.env``)
    them in ``~/.botspotter-maxmind`` (0600) for the cron. Without them the map stays at country centroids.
 -  ``crawler_ranges.json`` — built by ``jobs/crawler_ranges.py`` from the operators' official IP lists
    (``botspotter/verify.py`` ``SOURCES``). A vendor outage keeps the previous ranges for that operator.
--  ``sensors.json`` — sensor site locations (copied from the package on first run; edit the ``/data`` copy to add a
-   site: ``{"site": {"city": "...", "lat": .., "lon": .., "url": ".."}}``, then ``docker compose ... up -d api aggregator``).
+-  ``sensors.json`` — sensor site locations. Follows the packaged ``botspotter/data/sensors.json`` on every refresh
+   (so a PR is the normal way to add a site). To hand-maintain the ``/data`` copy instead, ``touch
+   ~/botspotter-data/sensors.json.custom``; the refresh then leaves it alone.
 
 When a file changes the script recreates ingest/api/aggregator (they read the data at start). Manual run:
 ``MAXMIND_ACCOUNT_ID=.. MAXMIND_LICENSE_KEY=.. bash deploy/refresh-data.sh``. Check: ``ls -la ~/botspotter-data``;
@@ -179,6 +180,17 @@ Monthly, first week of the month, into ``private/evidence/YYYY-MM/`` (gitignored
 -  any press, posts or citations (URL + archived copy via https://web.archive.org/save/).
 
 Each export is dated by the vendor, which is what makes it credible later; keep the originals unedited.
+
+Sensors on the VM
+-----------------
+
+-  ``botspotter-portal``: the API's own middleware (every request to botspotter.app).
+-  ``sharpen``: Caddy → ``sensor-vector`` sidecar (:doc:`sensors` "Caddy sidecar"). Key = the ``sharpen`` entry of
+   ``BS_SENSOR_KEYS`` (``private/notes.md``), exported as ``SHARPEN_SENSOR_KEY`` in ``.env`` by ``remote.sh``.
+   Troubleshoot: ``logs sensor-vector`` (VRL errors), ``docker exec deploy-caddy-1 caddy validate`` after editing the
+   Sharpen Caddyfile, and ``/v1/sensors`` for the catch count.
+-  ``bhushan-profile`` (GitHub Pages) cannot run a sensor — static hosting has no request log. It stays in
+   ``sensors.json`` only if it is ever fronted by Cloudflare with a Worker sensor.
 
 Health checks
 -------------
