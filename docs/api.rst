@@ -154,3 +154,26 @@ Require ``BS_ADMIN_KEY`` (``X-BS-Admin`` header, or ``?key=`` for downloads); 40
      - every page view (newest first) as CSV: ts, visitor id, country, region, city, page, referrer, browser, os, device, lang
 
 A session is a run of views by one visitor with gaps under 30 minutes (Google Analytics' definition). No IP appears in any of these.
+
+Enrollment (signed-in site owners)
+----------------------------------
+
+Session cookie ``bs_session`` from ``GET /auth/github`` → GitHub → ``GET /auth/github/callback``; ``GET /auth/logout``.
+``GET /v1/me`` → ``{user|null, oauth_enabled}``. All of the following answer 401 without a session:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Endpoint
+     - Returns
+   * - ``GET /v1/sites/mine``
+     - the caller's sites: domain, status (pending|verified), hits, last_seen, city, token (while pending)
+   * - ``POST /v1/sites`` ``{"domain"}``
+     - 201 pending site with the two proofs (``dns``: name/type/value, ``wellknown``: url/content); 409 if another account owns it; 429 at 5 sites
+   * - ``POST /v1/sites/{domain}/verify``
+     - 200 ``{key, via, location}`` — key shown once; 403 while the proof is not found; 429 after 10 attempts/hour
+   * - ``POST /v1/sites/{domain}/rotate``
+     - new key; old one revoked (ingest cache ≤ 60 s)
+   * - ``DELETE /v1/sites/{domain}``
+     - revokes the key and deletes the enrolment

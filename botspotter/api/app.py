@@ -25,11 +25,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import hmac
+import secrets
 import time
+import urllib.parse
 
 import orjson
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..config import settings
@@ -37,6 +39,7 @@ from ..avatar import avatar_svg
 from ..audience import build_ledger, ledger_csv, visits_csv
 from ..claims import Claims
 from ..counters import Counters
+from ..enroll import Enrollment, Sessions, github_exchange, normalize_domain
 from ..enrich import Enricher
 from ..models import SensorHit
 from ..store import make_store
@@ -47,7 +50,8 @@ PORTAL_SITE = "botspotter-portal"
 
 
 def create_app(counters: Counters | None = None, stream=None, enricher: Enricher | None = None,
-               self_sensor: bool = True, store=None, admin_key: str | None = None) -> FastAPI:
+               self_sensor: bool = True, store=None, admin_key: str | None = None,
+               enrollment: Enrollment | None = None, exchange=None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.counters = counters or Counters.from_url()
@@ -56,6 +60,10 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
         app.state.enricher = enricher or Enricher()
         app.state.claims = Claims(app.state.counters)
         app.state.admin_key = settings.admin_key if admin_key is None else admin_key
+        app.state.sessions = Sessions(settings.session_secret or secrets.token_hex(32))   # unset secret: sessions die with the process
+        app.state.enroll = enrollment or Enrollment(app.state.counters.r, app.state.enricher.geo)
+        app.state.exchange = exchange or github_exchange
+        app.state.oauth_enabled = bool(settings.github_client_id and settings.github_client_secret) or exchange is not None
         await app.state.stream.start()
         await app.state.store.start()
         yield
@@ -251,6 +259,95 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
         return Response("\n".join(lines) + "\n", media_type="text/csv",
                         headers={"Content-Disposition": "attachment; filename=botspotter-audience.csv", "Cache-Control": "public, max-age=300"})
 
+    # ---- accounts + self-serve sensor enrollment ----------------------------------
+    # Keys are issued only to an authenticated GitHub user who proved control of the
+    # domain (DNS TXT or /.well-known file). See botspotter/enroll.py and docs/sensors.rst.
+    COOKIE = "bs_session"
+
+    def _user_id(request: Request) -> int:
+        uid = request.app.state.sessions.read(request.cookies.get(COOKIE))
+        if uid is None:
+            raise HTTPException(401, "sign in first")
+        return uid
+
+    def _secure(request: Request) -> bool:
+        return request.headers.get("x-forwarded-proto", request.url.scheme) == "https"
+
+    @app.get("/auth/github")
+    async def auth_github(request: Request):
+        if not request.app.state.oauth_enabled:
+            raise HTTPException(503, "sign-in is not enabled on this server (BS_GITHUB_CLIENT_ID unset)")
+        state = secrets.token_urlsafe(16)
+        q = urllib.parse.urlencode({"client_id": settings.github_client_id, "state": state,
+                                    "redirect_uri": settings.public_url.rstrip("/") + "/auth/github/callback"})
+        resp = RedirectResponse("https://github.com/login/oauth/authorize?" + q, status_code=302)
+        resp.set_cookie("bs_oauth_state", state, max_age=600, httponly=True, secure=_secure(request), samesite="lax")
+        return resp
+
+    @app.get("/auth/github/callback")
+    async def auth_github_callback(request: Request, code: str = "", state: str = ""):
+        if not request.app.state.oauth_enabled:
+            raise HTTPException(503, "sign-in is not enabled")
+        if not code or not state or not hmac.compare_digest(state, request.cookies.get("bs_oauth_state", "")):
+            raise HTTPException(400, "bad OAuth state — start again from /sensors")
+        try:
+            u = await request.app.state.exchange(code)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(502, f"GitHub sign-in failed: {exc}")
+        await request.app.state.enroll.upsert_user(u)
+        resp = RedirectResponse("/sensors", status_code=302)
+        resp.set_cookie(COOKIE, request.app.state.sessions.issue(u.id), max_age=30 * 86400, httponly=True,
+                        secure=_secure(request), samesite="lax")
+        resp.delete_cookie("bs_oauth_state")
+        return resp
+
+    @app.get("/auth/logout")
+    async def auth_logout():
+        resp = RedirectResponse("/sensors", status_code=302)
+        resp.delete_cookie(COOKIE)
+        return resp
+
+    @app.get("/v1/me")
+    async def me(request: Request):
+        uid = request.app.state.sessions.read(request.cookies.get(COOKIE))
+        u = await request.app.state.enroll.user(uid) if uid else None
+        return Response(orjson.dumps({"user": u, "oauth_enabled": request.app.state.oauth_enabled}),
+                        media_type="application/json", headers={"Cache-Control": "private, no-store"})
+
+    def _r(res) -> Response:
+        return Response(orjson.dumps(res.body), status_code=res.status, media_type="application/json",
+                        headers={"Cache-Control": "private, no-store"})
+
+    @app.get("/v1/sites/mine")
+    async def sites_mine(request: Request):
+        uid = _user_id(request)
+        return Response(orjson.dumps({"sites": await request.app.state.enroll.my_sites(uid)}), media_type="application/json",
+                        headers={"Cache-Control": "private, no-store"})
+
+    @app.post("/v1/sites")
+    async def sites_add(request: Request):
+        uid = _user_id(request)
+        body = orjson.loads(await request.body() or b"{}")
+        return _r(await request.app.state.enroll.add_site(uid, str(body.get("domain", ""))))
+
+    @app.post("/v1/sites/{domain}/verify")
+    async def sites_verify(request: Request, domain: str):
+        uid = _user_id(request)
+        d = normalize_domain(domain)
+        if not d:
+            raise HTTPException(400, "bad domain")
+        return _r(await request.app.state.enroll.verify(uid, d))
+
+    @app.post("/v1/sites/{domain}/rotate")
+    async def sites_rotate(request: Request, domain: str):
+        uid = _user_id(request)
+        return _r(await request.app.state.enroll.rotate_key(uid, normalize_domain(domain) or ""))
+
+    @app.delete("/v1/sites/{domain}")
+    async def sites_remove(request: Request, domain: str):
+        uid = _user_id(request)
+        return _r(await request.app.state.enroll.remove_site(uid, normalize_domain(domain) or ""))
+
     # ---- owner-only audience ledger -------------------------------------------------
     def _admin(request: Request, key: str = "") -> None:
         """404 (not 401) when no key is configured or it doesn't match: the route's
@@ -318,7 +415,7 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
     @app.get("/v1/sites")
     async def sites(request: Request):
         """Sensor sites and their (city-level) locations, for the map."""
-        return cached({"sites": request.app.state.counters.sites.public()}, 300)
+        return cached({"sites": request.app.state.counters.sites.public() + await request.app.state.enroll.public_sites()}, 300)
 
     @app.get("/v1/sensors")
     async def sensors(request: Request, limit: int = Query(20, le=100)):

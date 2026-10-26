@@ -10,6 +10,7 @@ Stateless: run N replicas behind Nginx/Cloudflare.
 from __future__ import annotations
 
 import hashlib
+import time
 from contextlib import asynccontextmanager
 
 import orjson
@@ -44,15 +45,40 @@ def parse_batch(body: bytes) -> SensorBatch:
     return SensorBatch(events=[orjson.loads(line) for line in body.splitlines() if line.strip()])
 
 
-def create_app(stream=None, enricher: Enricher | None = None) -> FastAPI:
+def create_app(stream=None, enricher: Enricher | None = None, redis=None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.stream = stream or make_stream()
         app.state.enricher = enricher or Enricher()
         app.state.keys = settings.sensor_map()
+        # Self-serve keys live in Redis (bs:sensor_keys, sha256 -> domain); looked up on a
+        # miss and cached 60 s so a rotated/revoked key stops within a minute.
+        if redis is not None:
+            app.state.redis = redis
+        else:
+            from redis import asyncio as aioredis
+
+            app.state.redis = aioredis.from_url(settings.redis_url, decode_responses=False)
+        app.state.key_cache: dict[str, tuple[str, float]] = {}
         await app.state.stream.start()
         yield
         await app.state.stream.stop()
+
+    async def resolve_site(app: FastAPI, key: str) -> str | None:
+        site = app.state.keys.get(key) or app.state.keys.get(hashlib.sha256(key.encode()).hexdigest())
+        if site:
+            return site
+        hit = app.state.key_cache.get(key)
+        now = time.time()
+        if hit and now - hit[1] < 60:
+            return hit[0] or None
+        try:
+            v = await app.state.redis.hget("bs:sensor_keys", hashlib.sha256(key.encode()).hexdigest())
+            site = v.decode() if v else ""
+        except Exception:  # noqa: BLE001 - Redis hiccup: treat as unknown, never as any site
+            site = ""
+        app.state.key_cache[key] = (site, now)
+        return site or None
 
     app = FastAPI(title="BotSpotter ingest", lifespan=lifespan)
 
@@ -62,10 +88,7 @@ def create_app(stream=None, enricher: Enricher | None = None) -> FastAPI:
 
     @app.post("/v1/ingest", status_code=202)
     async def ingest(request: Request, x_bs_key: str = Header(default="")):
-        site = request.app.state.keys.get(x_bs_key)
-        if not site:
-            # Also accept sha256-hashed keys from the sensors table in prod (see runbook).
-            site = request.app.state.keys.get(hashlib.sha256(x_bs_key.encode()).hexdigest())
+        site = await resolve_site(request.app, x_bs_key) if x_bs_key else None
         if not site:
             raise HTTPException(401, "invalid sensor key")
         try:

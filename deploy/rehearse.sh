@@ -43,7 +43,7 @@ req=urllib.request.Request('http://localhost:8001/v1/beacon',data=b'{}',method='
 print('beacon', urllib.request.urlopen(req,timeout=5).status)"
 sleep 6
 $COMPOSE exec -T api python -c "
-import urllib.request, json, time, sys
+import urllib.request, urllib.error, json, time, sys
 s=json.load(urllib.request.urlopen('http://localhost:8000/v1/snapshot'))
 age=time.time()-s['ts']; print('snapshot age', round(age,1), 'bot hits', s['bots']['total_hits'], 'views', s['humans']['views'])
 assert age < 10, 'snapshot stale: aggregator not writing'
@@ -52,6 +52,11 @@ req=urllib.request.Request('http://localhost:8000/v1/admin/visitors', headers={'
 led=json.load(urllib.request.urlopen(req)); assert led['summary']['views'] >= 1, 'ledger empty: migrations/visits broken'
 print('ledger ok', led['summary']['views'], 'view(s)')
 sites=json.load(urllib.request.urlopen('http://localhost:8000/v1/sites')); assert sites['sites'], 'no sensor sites'
+me=json.load(urllib.request.urlopen('http://localhost:8000/v1/me')); assert me['user'] is None and 'oauth_enabled' in me, 'enrollment endpoint broken'
+try:
+    urllib.request.urlopen('http://localhost:8000/v1/sites/mine'); raise SystemExit('enrollment must require sign-in')
+except urllib.error.HTTPError as e:
+    assert e.code == 401, e.code
 print('rehearsal OK')"
 STATE=$($COMPOSE ps --format '{{.Service}} {{.Status}}' | awk '$1=="aggregator"{print $2}')
 [ "$STATE" = "Up" ] || { echo "aggregator is $STATE"; $COMPOSE logs --tail 60 aggregator; exit 1; }

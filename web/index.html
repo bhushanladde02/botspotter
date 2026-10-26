@@ -123,6 +123,8 @@
   .about input,.about textarea{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;font:inherit;font-size:14px}
   .about label.chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--muted)}
   .about button{background:var(--acid);color:#07090f;border:0;font-weight:700;padding:11px 16px;border-radius:10px;cursor:pointer;font-size:14px}
+  .about .btn{display:inline-block;background:var(--acid);color:#07090f;font-weight:700;padding:11px 16px;border-radius:10px;text-decoration:none;font-size:14px}
+  .about button.sm{padding:6px 10px;font-size:12px;border-radius:8px}
   .about select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;font:inherit}
   .about button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:500}
   .about button:disabled{opacity:.4;cursor:not-allowed}
@@ -224,53 +226,71 @@
 
 <section class="about" id="page-sensors">
   <h1>Add your site as a sensor</h1>
-  <p>A sensor tells BotSpotter which <em>bots</em> visit your site. It never sends page content, cookies, header values, or your human visitors &mdash; browsers are filtered out on your server before anything leaves it. You get a public spot on the leaderboard and a private view of which AI companies read your pages.</p>
+  <p>A sensor tells BotSpotter which <em>bots</em> visit your site. It never sends page content, cookies, header values, or your human visitors &mdash; browsers are filtered out on your server before anything leaves it. Two clicks and one paste: sign in, prove the domain is yours, paste one snippet.</p>
 
-  <h2>1 &middot; Get a sensor key</h2>
-  <p>Keys are issued by hand while we're in beta. Fill this in and you'll get a key by email, usually the same day.</p>
-  <form id="keyform" onsubmit="return requestKey(event)">
-    <input name="site" placeholder="your site, e.g. example.com" required>
-    <input name="email" type="email" placeholder="email for the key" required>
-    <textarea name="stack" rows="2" placeholder="what runs it? (Nginx, FastAPI, WordPress, Vercel…)"></textarea>
-    <label class="chk"><input type="checkbox" id="agree" onchange="$('keybtn').disabled=!this.checked"><span>I own or am authorised to administer this site, and I accept the <a href="/terms" onclick="return go('/terms')">Sensor Terms</a>.</span></label>
-    <button id="keybtn" type="submit" disabled>Request a key</button>
-    <div class="note" id="keymsg" style="display:none"></div>
-  </form>
+  <div id="en_signin">
+    <h2>1 &middot; Sign in</h2>
+    <p>Keys are issued only to a signed-in owner who has proven control of the domain. We store your GitHub id, login and avatar &mdash; nothing else (see <a href="/terms" onclick="return go('/terms')">accounts</a>).</p>
+    <a class="btn" id="en_login" href="/auth/github">Sign in with GitHub</a>
+    <div class="note" id="en_disabled" style="display:none">Self-serve enrollment isn't enabled on this server yet &mdash; email <a href="mailto:hello@botspotter.app">hello@botspotter.app</a> with your domain and we'll issue a key by hand.</div>
+  </div>
 
-  <h2>2 &middot; Install (pick one)</h2>
-  <p><strong>Python app</strong> (FastAPI, Starlette, Flask, Django) &mdash; zero dependencies:</p>
-  <pre>pip install botspotter-sensor
+  <div id="en_app" style="display:none">
+    <p class="m">Signed in as <img id="en_avatar" class="av" src="" alt="" style="width:20px;height:20px;vertical-align:middle;border-radius:50%"> <b id="en_login_name"></b> &middot; <a href="/auth/logout">sign out</a></p>
+
+    <h2>2 &middot; Add a site</h2>
+    <form id="en_form" onsubmit="return enAdd(event)" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input name="domain" placeholder="example.com" required style="flex:1;min-width:220px">
+      <label class="chk" style="flex-basis:100%"><input type="checkbox" id="en_agree" onchange="$('en_addbtn').disabled=!this.checked"><span>I own or am authorised to administer this site, and I accept the <a href="/terms" onclick="return go('/terms')">Sensor Terms</a>.</span></label>
+      <button id="en_addbtn" type="submit" disabled>Add site</button>
+    </form>
+    <div class="note" id="en_msg" style="display:none"></div>
+
+    <h2>My sites</h2>
+    <div id="en_sites" class="recent"></div>
+
+    <div id="en_key" style="display:none">
+      <h2>3 &middot; Install on <span id="en_key_domain"></span> (pick one)</h2>
+      <div class="note">Your sensor key &mdash; shown once; copy it now. Lost it? <em>Rotate</em> in My sites issues a new one.<br><span class="ex" id="en_key_val" style="font-size:15px;user-select:all"></span></div>
+      <p><strong>Caddy</strong> (no code; works for any app behind it) &mdash; add to your site block, then <span class="ex">caddy reload</span>. Needs the <a href="https://github.com/bhushanladde02/botspotter/blob/main/docs/sensors.rst" target="_blank" rel="noopener">Vector sidecar</a> next to your Caddy with <span class="ex">BS_KEY=</span><span class="en-k"></span>:</p>
+      <pre>log botspotter {
+    output net tcp/bs-vector:9000 { soft_start }
+    format filter { wrap json
+        fields { request>headers>Cookie delete
+                 request>headers>Authorization delete } }
+}</pre>
+      <p><strong>Python app</strong> (FastAPI, Starlette, Flask, Django) &mdash; zero dependencies:</p>
+      <pre>pip install botspotter-sensor
 
 # FastAPI / Starlette
 from botspotter_sensor import BotSpotterMiddleware
-app.add_middleware(BotSpotterMiddleware, key="YOUR_KEY")
+app.add_middleware(BotSpotterMiddleware, key="<span class="en-k"></span>")
 
 # Flask / any WSGI
 from botspotter_sensor import wsgi_sensor
-app.wsgi_app = wsgi_sensor(app.wsgi_app, key="YOUR_KEY")
+app.wsgi_app = wsgi_sensor(app.wsgi_app, key="<span class="en-k"></span>")
 
 # Django settings.py
 MIDDLEWARE += ["botspotter_sensor.django.BotSpotterMiddleware"]
-BOTSPOTTER_KEY = "YOUR_KEY"</pre>
-  <p><strong>Nginx / Apache / Caddy</strong> &mdash; no code, via <a href="https://vector.dev" target="_blank" rel="noopener">Vector</a>: add our log format, point Vector at the log file, set <span class="ex">BS_KEY</span>. Config files and a step-by-step are in <span class="ex">sensors/</span> of the repo.</p>
-  <p><strong>Anything else</strong> &mdash; POST JSON batches to <span class="ex">/v1/ingest</span> with header <span class="ex">X-BS-Key</span>:</p>
-  <pre>{"events":[{"ua":"Mozilla/5.0 (compatible; GPTBot/1.2)",
+BOTSPOTTER_KEY = "<span class="en-k"></span>"</pre>
+      <p><strong>Nginx / Apache</strong> &mdash; no code, via <a href="https://vector.dev" target="_blank" rel="noopener">Vector</a>: add our <a href="https://github.com/bhushanladde02/botspotter/blob/main/sensors/nginx/log_format.conf" target="_blank" rel="noopener">log format</a>, point <a href="https://github.com/bhushanladde02/botspotter/blob/main/sensors/vector/vector.toml" target="_blank" rel="noopener">vector.toml</a> at the log file, set <span class="ex">BS_KEY=</span><span class="en-k"></span>.</p>
+      <p><strong>Anything else</strong> &mdash; POST JSON batches to <span class="ex">https://botspotter.app/v1/ingest</span> with header <span class="ex">X-BS-Key: <span class="en-k"></span></span>:</p>
+      <pre>{"events":[{"ua":"Mozilla/5.0 (compatible; GPTBot/1.2)",
             "headers":["host","user-agent","accept","accept-encoding"],
             "ip":"20.171.207.5","cf_country":"US","method":"GET","status":200,"path":"/robots.txt"}]}</pre>
+      <h2>4 &middot; Watch it light up</h2>
+      <div class="note" id="en_wait">&#9203; Waiting for the first bot on <span class="en-d"></span>&hellip; this page checks every 5 s. Test it yourself: <span class="ex">curl -A "Mozilla/5.0 (compatible; GPTBot/1.2)" https://<span class="en-d"></span>/</span></div>
+      <p>Then show it off &mdash; every sensor gets a live badge:</p>
+      <pre>&lt;a href="https://botspotter.app/?s=<span class="en-d"></span>"&gt;&lt;img src="https://botspotter.app/badge/<span class="en-d"></span>.svg" alt="AI bots spotted here, by BotSpotter"&gt;&lt;/a&gt;</pre>
+    </div>
+  </div>
 
-  <h2>3 &middot; Show it off (and help others find BotSpotter)</h2>
-  <p>Every sensor gets a live badge. Paste this where your site id is yours:</p>
-  <pre>&lt;a href="https://botspotter.app/?s=YOUR_SITE_ID"&gt;&lt;img src="https://botspotter.app/badge/YOUR_SITE_ID.svg" alt="AI bots spotted here, by BotSpotter"&gt;&lt;/a&gt;</pre>
-  <p><img src="/badge/botspotter-portal.svg" alt="example badge" style="vertical-align:middle"> &larr; the portal's own badge, live.</p>
-
-  <h2>4 &middot; Watch it light up</h2>
-  <p>Within a few minutes your site appears under <em>Sensors with most catches</em>, and every bot it sees gets its name. Behind Cloudflare? Nothing extra to do.</p>
-  <div class="note">What leaves your server: header <em>names</em>, User-Agent, client IP (used once for country + network prefix, then discarded), method, status, and whether the path was <span class="ex">robots.txt</span>. Nothing else. Full detail in the <a href="/terms" onclick="return go('/terms')">terms</a>.</div>
+  <div class="note" style="margin-top:18px">What leaves your server: header <em>names</em>, User-Agent, client IP (used once for country + network, then discarded), method, status, and whether the path was <span class="ex">robots.txt</span>. Never page content, cookies, header values, or human visitors. No GitHub account? Email <a href="mailto:hello@botspotter.app">hello@botspotter.app</a> with your domain.</div>
 </section>
 
 <section class="about" id="page-terms">
   <h1>Sensor Terms &amp; Privacy</h1>
-  <p class="note">Plain-English summary first; the terms follow. Effective 25 Oct 2026; privacy section (&sect;5, human visitors) updated 26 Oct 2026. These apply to anyone who installs a BotSpotter sensor or uses the BotSpotter API. Just looking at the site? Only the Privacy section concerns you.</p>
+  <p class="note">Plain-English summary first; the terms follow. Effective 25 Oct 2026; &sect;5 (human visitors) and &sect;5a (accounts) updated 26 Oct 2026. These apply to anyone who installs a BotSpotter sensor or uses the BotSpotter API. Just looking at the site? Only the Privacy section concerns you.</p>
 
   <h2>Summary</h2>
   <ul>
@@ -304,6 +324,9 @@ BOTSPOTTER_KEY = "YOUR_KEY"</pre>
   <p><strong>Stored:</strong> timestamp, your site id, the bot's fingerprint hash and derived name, a version-stripped User-Agent family, bot operator and category, country, region, a coarse geohash, and the robots.txt flag. Raw events are kept 90 days; hourly aggregates indefinitely.</p>
   <p><strong>Human visitors to this portal:</strong> we do not store your IP address and we set no cookie or browser identifier. Each page view is recorded as a <em>pseudonymous</em> visit: a salted hash of your IP and browser (the hash cannot be turned back into either; the salt is a server secret), the country and, when our CDN supplies it, the city; the page viewed; the referring <em>domain</em> (e.g. linkedin.com, &ldquo;direct&rdquo;) &mdash; never the referring page; your browser family, operating system, device class and preferred language. These rows are kept for up to three years, are visible only to the site owner, are used solely to understand and demonstrate the site&rsquo;s audience (how many people, from where, how often they return), and are never sold or shared individually. Public pages show aggregates only. A daily-rotating hash additionally powers the public &ldquo;humans today / this week&rdquo; counters. We may also use Cloudflare Web Analytics, a cookie-free, privacy-preserving service of our CDN, for the same purpose.</p>
   <p><strong>Legal basis (where GDPR/UK GDPR applies):</strong> legitimate interest in measuring automated traffic and in understanding the portal&rsquo;s own audience. The IP address is processed transiently for seconds and never retained; what is retained is pseudonymous and coarse by design. If you believe a stored record identifies you, email us and we will remove it.</p>
+
+  <h2>5a. Accounts (self-serve enrollment)</h2>
+  <p>To add a site yourself you sign in with GitHub. We store your GitHub numeric id, login and avatar URL, the domains you enrol, when they were verified and a hash of each sensor key &mdash; nothing else, and no e-mail address. A key is issued only after you prove control of the domain (a DNS TXT record or a file under <span class="ex">/.well-known/</span>); we check that proof once, at verification. Signing out deletes nothing; removing a site revokes its key immediately and deletes the enrolment record. Statistics already published remain, as described in &sect;6. To delete your account entirely, email us from the address on your GitHub profile.</p>
 
   <h2>6. Published data and your site id</h2>
   <p>Your site id (the name you choose when requesting a key) appears publicly on the sensor leaderboard with its hit counts. Choose a name you're comfortable publishing. Aggregated statistics and bot profiles we publish are licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>; attribute &ldquo;BotSpotter&rdquo;.</p>
@@ -762,6 +785,7 @@ function route(){ const page = PAGES[location.pathname] || null; document.body.c
   $('nav_about').classList.toggle('on', page==='page-about'); $('nav_sensors').classList.toggle('on', page==='page-sensors'||page==='page-terms'); $('nav_claim').classList.toggle('on', page==='page-claim'); $('nav_stats').classList.toggle('on', page==='page-stats'); $('nav_live').classList.toggle('on', !page);
   if (page==='page-stats') loadStats();
   if (page==='page-admin') admInit();
+  if (page==='page-sensors') enInit();
   if (page==='page-claim') { const q = new URLSearchParams(location.search).get('slug'); if (q) $('claim_slug').value = q; }
   if (!page && map) setTimeout(()=>map.resize(), 50); }
 // ---------- claim your bot
@@ -817,9 +841,40 @@ async function loadAdmin(){ const key=admKey(), days=$('adm_days').value, msg=$(
   $('adm_table').innerHTML = led.visitors.map(v=>`<div class="row" style="align-items:flex-start"><span><span class="n">${flag(v.country)} ${esc(v.city||v.country)} <span class="m">· ${esc(v.id)}</span>${v.returning?' <span class="tag agent">returning</span>':''}</span><div class="m">${esc(v.browser)} · ${esc(v.os)} · ${esc(v.device)}${v.lang?' · '+esc(v.lang):''} · from ${esc(v.first_ref)} · ${v.pages.map(([p,n])=>esc(p)+'×'+n).join(' ')}</div></span><span class="m" style="text-align:right;white-space:nowrap">${when(v.last_seen)}<br>${v.sessions} session${v.sessions>1?'s':''} · ${v.views} views · ${v.days_active} day${v.days_active>1?'s':''}<br><span style="opacity:.6">first ${when(v.first_seen)}</span></span></div>`).join('') || '<div class="row m">no visits in this window</div>';
   $('adm_method').textContent = 'Method: ' + s.method + '. Generated ' + led.generated_at + '.';
 }
-function requestKey(e){ e.preventDefault(); const f = new FormData(e.target); const body = `Site: ${f.get('site')}\nEmail: ${f.get('email')}\nStack: ${f.get('stack')||'-'}\n\nI own/administer this site and accept the Sensor Terms.`;
-  location.href = 'mailto:hello@botspotter.app?subject=' + encodeURIComponent('BotSpotter sensor key: ' + f.get('site')) + '&body=' + encodeURIComponent(body);
-  const m = $('keymsg'); m.style.display='block'; m.textContent = 'Opening your email client — send that message and we will reply with your key. If nothing opened, email hello@botspotter.app with your site name.'; return false; }
+// ---------- self-serve sensor enrollment (/sensors): sign in -> add domain -> verify -> key
+let enPoll = null, enDomain = null;
+async function enInit(){ try{
+  const me = await (await fetch(API+'/v1/me', {credentials:'same-origin'})).json();
+  if (!me.user){ $('en_signin').style.display='block'; $('en_app').style.display='none';
+    if (!me.oauth_enabled){ $('en_login').style.display='none'; $('en_disabled').style.display='block'; } return; }
+  $('en_signin').style.display='none'; $('en_app').style.display='block';
+  $('en_login_name').textContent = me.user.login; $('en_avatar').src = me.user.avatar || '';
+  await enList();
+}catch(e){ console.error('enroll', e); } }
+async function enList(){ const r = await fetch(API+'/v1/sites/mine', {credentials:'same-origin'}); if (r.status!==200) return;
+  const sites = (await r.json()).sites;
+  $('en_sites').innerHTML = sites.length ? sites.map(s => s.status==='verified'
+    ? `<div class="row" style="align-items:flex-start"><span><span class="n">${esc(s.domain)} <span class="tag scraper">verified</span></span><div class="m">${fmt(s.hits)} bot hits${s.last_seen?' · last '+ago(s.last_seen):' · no bot seen yet'}${s.city?' · '+esc(s.city):''}</div></span><span style="white-space:nowrap"><button class="sm" onclick="enRotate('${esc(s.domain)}')">Rotate key</button> <button class="sm ghost" onclick="enRemove('${esc(s.domain)}')">Remove</button></span></div>`
+    : `<div class="row" style="align-items:flex-start"><span><span class="n">${esc(s.domain)} <span class="tag unknown">pending proof</span></span><div class="m">Prove you control it (either one), then click Verify:<br>DNS TXT &nbsp;<span class="ex">_botspotter.${esc(s.domain)}</span> = <span class="ex" style="user-select:all">botspotter-verify=${esc(s.token)}</span><br>or file &nbsp;<span class="ex">https://${esc(s.domain)}/.well-known/botspotter-verify.txt</span> containing that same line</div></span><span style="white-space:nowrap"><button class="sm" onclick="enVerify('${esc(s.domain)}')">Verify</button> <button class="sm ghost" onclick="enRemove('${esc(s.domain)}')">Remove</button></span></div>`
+  ).join('') : '<div class="row m">no sites yet — add one above</div>'; }
+function enSay(t, ok){ const m=$('en_msg'); m.style.display='block'; m.style.borderColor = ok?'var(--acid)':'#ff3b4f'; m.textContent=t; }
+async function enAdd(e){ e.preventDefault(); const f = new FormData(e.target);
+  const r = await fetch(API+'/v1/sites', {method:'POST', credentials:'same-origin', headers:{'content-type':'application/json'}, body: JSON.stringify({domain: f.get('domain')})});
+  const j = await r.json(); if (r.status>=400){ enSay(j.error||('error '+r.status), false); return false; }
+  enSay(`Added ${j.domain}. Now prove it's yours — see My sites.`, true); e.target.reset(); $('en_agree').checked=false; $('en_addbtn').disabled=true; await enList(); return false; }
+async function enVerify(d){ const r = await fetch(API+'/v1/sites/'+encodeURIComponent(d)+'/verify', {method:'POST', credentials:'same-origin'}); const j = await r.json();
+  if (r.status!==200){ enSay(j.error||('error '+r.status), false); return; }
+  enSay(`Verified ${d} via ${j.via}. Your key is below — copy it now.`, true); await enList(); enShowKey(d, j.key); }
+async function enRotate(d){ if (!confirm(`Issue a new key for ${d}? The old one stops working immediately.`)) return;
+  const r = await fetch(API+'/v1/sites/'+encodeURIComponent(d)+'/rotate', {method:'POST', credentials:'same-origin'}); const j = await r.json();
+  if (r.status!==200){ enSay(j.error||('error '+r.status), false); return; } enSay(`New key for ${d} — update your sensor config.`, true); enShowKey(d, j.key); }
+async function enRemove(d){ if (!confirm(`Remove ${d}? Its key is revoked; stats already published stay.`)) return;
+  const r = await fetch(API+'/v1/sites/'+encodeURIComponent(d), {method:'DELETE', credentials:'same-origin'}); if (r.status===200){ enSay(`Removed ${d}.`, true); $('en_key').style.display='none'; clearInterval(enPoll); } await enList(); }
+function enShowKey(d, key){ enDomain = d; $('en_key').style.display='block'; $('en_key_domain').textContent = d; $('en_key_val').textContent = key;
+  for (const el of document.querySelectorAll('.en-k')) el.textContent = key; for (const el of document.querySelectorAll('.en-d')) el.textContent = d;
+  $('en_key').scrollIntoView({behavior:'smooth', block:'start'}); clearInterval(enPoll); enPoll = setInterval(enCheck, 5000); }
+async function enCheck(){ if (!enDomain) return; try{ const s = (await (await fetch(API+'/v1/sensors?limit=100')).json()).sensors.find(x=>x.site===enDomain);
+  if (s && s.hits>0){ $('en_wait').innerHTML = `&#9989; <b>${fmt(s.hits)}</b> bot${s.hits>1?'s':''} caught on ${esc(enDomain)} — your sensor is live. Watch it on the <a href="/" onclick="return go('/')">map</a>.`; clearInterval(enPoll); } }catch(e){} }
 window.addEventListener('popstate', route); route();
 if (location.pathname.startsWith('/bot/')) openBot(location.pathname.slice(5));
 

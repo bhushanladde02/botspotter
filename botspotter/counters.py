@@ -15,6 +15,7 @@ Key layout (all prefixed ``bs:``)::
   bs:bot:<fp>:sites                 HLL of site ids (how many sites it crawled)
   bs:bot:<fp>:recent                LIST of last 25 sightings {ts,site,country,gh} (newest first)
   bs:sightings                      LIST of last 100 sightings across all bots (live ticker)
+  bs:sensor:<site>                  HASH last_seen, last_bot (per-sensor status for owners)
   bs:live                           PUB/SUB channel: one message per sighting with origin + sensor location (/v1/live)
   bs:impostors / bs:verified        counters of known bots whose IP failed / passed the operator's published ranges
   bs:impostors:op                   ZSET operator -> impostor hits;  bs:cloud  ZSET hosting label -> hits
@@ -84,6 +85,24 @@ class Counters:
         from .verify import Verifier
 
         self.verifier = verifier or Verifier()   # only for status in the snapshot (which operators are checkable)
+        self._site_loc: dict[str, dict] = {}
+        self._site_loc_at = 0.0
+
+    async def _refresh_site_locations(self, sites: set[str]) -> None:
+        """Locations of self-serve enrolled sites (bs:site:<domain>), refreshed at most
+        once a minute so a hot ingest path costs one pipeline per minute, not per batch."""
+        now = time.time()
+        missing = [x for x in sites if x not in self._site_loc and x not in self.sites.sites]
+        if not missing and now - self._site_loc_at < 60:
+            return
+        self._site_loc_at = now
+        p = self.r.pipeline(transaction=False)
+        wanted = sorted(set(missing) | set(self._site_loc))
+        for d in wanted:
+            p.hmget(f"bs:site:{d}", "status", "lat", "lon", "city")
+        for d, (st, la, lo, ci) in zip(wanted, await p.execute()):
+            if st and st.decode() == "verified":
+                self._site_loc[d] = {"lat": float(la or 0), "lon": float(lo or 0), "city": (ci or b"").decode()}
 
     @classmethod
     def from_url(cls, url: str | None = None) -> "Counters":
@@ -104,6 +123,8 @@ class Counters:
         flags = await exists.execute()
         unseen = {fp for fp, f in zip(fps, flags) if not f}
 
+        # Arc destinations: packaged sensors.json, else sites enrolled self-serve (Redis), cached 60 s.
+        await self._refresh_site_locations({e.site for e in events})
         p = self.r.pipeline(transaction=False)
         live: list[bytes] = []
         for e in events:
@@ -119,6 +140,7 @@ class Counters:
             p.zincrby("bs:cat", 1, e.category)
             p.zincrby("bs:op", 1, e.operator)
             p.zincrby("bs:sensors", 1, e.site)
+            p.hset(f"bs:sensor:{e.site}", mapping={"last_seen": ts, "last_bot": e.name})
             for prec in (2, 3, 4):
                 p.zincrby(f"bs:gh:{prec}", 1, e.gh[:prec])
             p.incr(f"bs:bot:{e.fp}:h:{h}")
@@ -133,7 +155,7 @@ class Counters:
             p.lpush(f"bs:bot:{e.fp}:recent", sighting)
             # Live map: every sighting is also published for /v1/live (SSE). Fire-and-forget;
             # nobody listening costs nothing. Includes exact origin + the sensor's location.
-            dst = self.sites.location(e.site)
+            dst = self._site_loc.get(e.site) or self.sites.location(e.site)
             live.append(orjson.dumps({
                 "ts": ts, "name": e.name, "slug": slugify_name(e.name), "fp": e.fp, "operator": e.operator,
                 "category": e.category, "verified": e.verified, "country": e.country, "city": e.city,
@@ -377,7 +399,8 @@ class Counters:
                       "impostors_by_operator": [{"operator": c.decode(), "hits": int(n)} for c, n in imp_ops],
                       "operators": self.verifier.operators, "ranges_updated": self.verifier.updated},
             "by_cloud": [{"cloud": c.decode(), "hits": int(n)} for c, n in clouds],
-            "network": {"sensors": int(n_sensors), "countries": int(n_countries), "sites": self.sites.public()},
+            "network": {"sensors": int(n_sensors), "countries": int(n_countries),
+                        "sites": self.sites.public() + await self._enrolled_public()},
             "feed": feed_items,
             "sightings": [self._with_latlon(orjson.loads(x)) for x in sightings],
         }
@@ -424,6 +447,11 @@ class Counters:
                     places.append({"lat": round(la, 3), "lon": round(lo, 3), "hits": int(n)})
             out[fp] = places
         return out
+
+    async def _enrolled_public(self) -> list[dict]:
+        from .enroll import Enrollment
+
+        return await Enrollment(self.r, None).public_sites()
 
     async def write_snapshot(self) -> dict:
         snap = await self.build_snapshot()

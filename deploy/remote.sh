@@ -43,6 +43,9 @@ if ! grep -q '^BS_ADMIN_KEY=' .env; then
   echo "generated BS_ADMIN_KEY — copy it from .env into private/notes.md (it opens /admin)"
 fi
 grep -q '^DATA_DIR=' .env || echo "DATA_DIR=$HOME/botspotter-data" >> .env
+grep -q '^BS_SESSION_SECRET=' .env || echo "BS_SESSION_SECRET=$(openssl rand -hex 32)" >> .env
+grep -q '^BS_PUBLIC_URL=' .env || echo "BS_PUBLIC_URL=https://botspotter.app" >> .env
+grep -q '^BS_GITHUB_CLIENT_ID=' .env || echo "self-serve enrollment: add BS_GITHUB_CLIENT_ID / BS_GITHUB_CLIENT_SECRET to .env (runbook 'Enrollment') — until then /sensors offers the e-mail route"
 # Vector sidecar for sharpen.com needs that site's sensor key as its own variable.
 if ! grep -q '^SHARPEN_SENSOR_KEY=' .env; then
   SK=$(grep '^BS_SENSOR_KEYS=' .env | sed 's/^BS_SENSOR_KEYS=//' | tr ',' '\n' | awk -F: '$2=="sharpen"{print $1}' | head -1)
@@ -107,13 +110,15 @@ if ! grep -qE 'import +extra' "$CADDY_DIR/Caddyfile"; then
   printf '\n# drop-in sites (added by botspotter/deploy/remote.sh)\nimport extra/*\n' >> "$CADDY_DIR/Caddyfile"
   echo "added 'import extra/*' to Caddyfile (backup kept)"
 fi
-if ! cmp -s deploy/Caddyfile.botspotter "$EXTRA_DIR/botspotter.caddy"; then
-  cp deploy/Caddyfile.botspotter "$EXTRA_DIR/botspotter.caddy"
-  docker exec "$CADDY_CONTAINER" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
-  docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
-  echo "site block installed + caddy reloaded"
+# Always install + reload (cheap, idempotent) and prove the running config carries our
+# settings — on 2026-10-26 the retry block silently never reached the running Caddy.
+cp deploy/Caddyfile.botspotter "$EXTRA_DIR/botspotter.caddy"
+docker exec "$CADDY_CONTAINER" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
+docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+if docker exec "$CADDY_CONTAINER" caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile 2>/dev/null | grep -q '"try_duration"'; then
+  echo "site block installed + caddy reloaded (retry-through-recreate active)"
 else
-  echo "site block unchanged"
+  echo "!! caddy reloaded but the botspotter block is NOT in the running config — check 'import' in $CADDY_DIR/Caddyfile"
 fi
 
 step "6/7 smoke test (end to end through the real pipeline)"

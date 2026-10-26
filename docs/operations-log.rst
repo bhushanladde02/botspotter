@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 14:30
+     - Feature (PR pending): self-serve sensor enrollment — GitHub OAuth sign-in, domain ownership proof (DNS TXT or /.well-known), automatic key issuance (hash in ``bs:sensor_keys``, read by ingest with 60 s cache), rotate/remove, site location from GeoIP, "first bot caught" check; terms §5a accounts; ``remote.sh`` now always installs the Caddy drop-in, reloads and verifies ``try_duration`` is in the running config (the retry block had silently never been applied — cause of the 12:29 502s); per-sensor ``last_seen``
+     - Bhushan
    * - 2026-10-26 11:45
      - Feature (PR pending): sharpen.com becomes the second sensor — Caddy JSON log over TCP → ``sensor-vector`` sidecar (``sensors/caddy/vector.toml``) → ingest; ``remote.sh`` wires ``SHARPEN_SENSOR_KEY`` from ``BS_SENSOR_KEYS``. Requires one ``log`` block in Sharpen's Caddyfile (docs/sensors.rst "Caddy sidecar"); Caddy ``soft_start`` keeps Sharpen unaffected if Vector is down. Gate: ``gate:allow <reason>`` per-line override for destructive/RCE rules (never secrets), used for the CI rehearsal teardown
      - Bhushan
