@@ -65,6 +65,7 @@
   .card h3{margin:0 0 10px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
   .row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;gap:8px}
   .row:last-child{border-bottom:0}
+  .row:hover{background:rgba(255,77,210,.06)}
   .row .n{font-family:var(--mono);color:var(--text)}
   .row .m{color:var(--muted);font-size:11px}
   .row .h{font-family:var(--mono);color:var(--acid);font-variant-numeric:tabular-nums}
@@ -431,7 +432,7 @@ function stackedSpark(canvas, series){
   $('legend').innerHTML = keys.map(k=>`<span style="--c:${CATS[k].c}">${CATS[k].label}</span>`).join('');
 }
 function renderTicker(sightings){
-  $('ticker').innerHTML = sightings.slice(0,14).map(x=>`<span onclick="openBot('${esc(slugOf(x.name))}')" style="cursor:pointer">${flag(x.country)} <i>${esc(x.name)}</i> · ${esc(x.site)} · ${ago(x.ts)}</span>`).join('');
+  $('ticker').innerHTML = sightings.slice(0,14).map(x=>`<span onmouseenter="focusBot('${esc(slugOf(x.name))}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(slugOf(x.name))}')" style="cursor:pointer">${flag(x.country)} <i>${esc(x.name)}</i> · ${esc(x.site)} · ${ago(x.ts)}</span>`).join('');
 }
 const slugOf = n => String(n||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const ago = ts => { const d = Date.now()/1000 - ts; return d<60?`${Math.max(0,d|0)}s ago`:d<3600?`${(d/60)|0}m ago`:d<86400?`${(d/3600)|0}h ago`:`${(d/86400)|0}d ago`; };
@@ -446,7 +447,7 @@ function spark(canvas, data, color){
 
 // ---------- lists
 function rows(el, items, render){ el.innerHTML = items.length ? items.map(render).join('') : '<div class="row m">nothing yet — bots are shy</div>'; }
-const botRow = b => `<div class="row" onclick="openBot('${esc(b.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(b.slug)}.svg?size=56" alt="" loading="lazy">${esc(b.display_name||b.name)}${b.claimed?' <span title="claimed by operator" style="color:var(--acid)">✓</span>':''}</span><span class="tag ${esc(b.category)}">${esc(b.operator==='unknown'?'unknown':b.operator)}</span></span><span class="h">${fmt(b.hits)}</span></div>`;
+const botRow = b => `<div class="row" data-slug="${esc(b.slug)}" onmouseenter="focusBot('${esc(b.slug)}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(b.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(b.slug)}.svg?size=56" alt="" loading="lazy">${esc(b.display_name||b.name)}${b.claimed?' <span title="claimed by operator" style="color:var(--acid)">✓</span>':''}</span><span class="tag ${esc(b.category)}">${esc(b.operator==='unknown'?'unknown':b.operator)}</span></span><span class="h">${fmt(b.hits)}</span></div>`;
 
 // ---------- snapshot polling (CDN-cached, 2s)
 let lastSnap = null;
@@ -470,7 +471,7 @@ function paint(s){
     renderCats(s.bots.by_category); renderTicker(s.sightings || []);
     const top = catFilter ? s.bots.top.filter(b=>b.category===catFilter) : s.bots.top;
     rows($('top'), top.slice(0,10), botRow);
-    rows($('feed'), s.feed.slice(0,10), f => `<div class="row" onclick="openBot('${esc(f.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(f.slug)}.svg?size=56" alt="" loading="lazy">${esc(f.name)}</span><div class="m">${esc(f.ua_family)} · ${f.sites} site${f.sites>1?'s':''} · ${esc(f.country)}</div></span><span class="m">${new Date(f.ts*1000).toLocaleTimeString()}</span></div>`);
+    rows($('feed'), s.feed.slice(0,10), f => `<div class="row" onmouseenter="focusBot('${esc(f.slug)}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(f.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(f.slug)}.svg?size=56" alt="" loading="lazy">${esc(f.name)}</span><div class="m">${esc(f.ua_family)} · ${f.sites} site${f.sites>1?'s':''} · ${esc(f.country)}</div></span><span class="m">${new Date(f.ts*1000).toLocaleTimeString()}</span></div>`);
     rows($('countries'), s.bots.by_country.slice(0,10), c => `<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h">${fmt(c.hits)}</span></div>`);
     rows($('ops'), s.bots.by_operator.slice(0,10), o => `<div class="row"><span class="n">${esc(o.operator)}</span><span class="h">${fmt(o.hits)}</span></div>`);
     rows($('h_countries'), (s.humans.by_country||[]).slice(0,8), c => `<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h" style="color:var(--pink)">${fmt(c.views)}</span></div>`);
@@ -523,6 +524,35 @@ map.on('load',()=>{
 }); map.on('zoomend',()=>refreshMap(false));
 
 } else { $('map').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">map library failed to load — counters still live</div>'; }
+
+// ---------- hover a bot -> light up where it comes from
+const HOME = {center:[12,22], zoom:1.7};
+let focusTimer = null, focusToken = 0, focusCache = new Map();
+function ensureFocusLayers(){ if(!map || map.getSource('focus')) return;
+  map.addSource('focus',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+  const R = ['interpolate',['linear'],['sqrt',['get','hits']],1,6,100,16,10000,30];
+  map.addLayer({id:'focus-halo',type:'circle',source:'focus',paint:{'circle-color':'#ff4dd2','circle-opacity':.18,'circle-blur':1,'circle-radius':['*',R,3]}});
+  map.addLayer({id:'focus-ring',type:'circle',source:'focus',paint:{'circle-color':'transparent','circle-stroke-color':'#ff4dd2','circle-stroke-width':2,'circle-stroke-opacity':.9,'circle-radius':['*',R,1.6]}});
+  map.addLayer({id:'focus-dot',type:'circle',source:'focus',paint:{'circle-color':'#ff4dd2','circle-stroke-color':'#07090f','circle-stroke-width':1.5,'circle-radius':['*',R,.7]}});
+}
+async function focusBot(slug){ if(!map || !slug) return; clearTimeout(focusTimer); const my = ++focusToken;
+  focusTimer = setTimeout(async()=>{
+    try{
+      let b = focusCache.get(slug); if(!b || Date.now()-b._t > 10000){ b = await (await fetch(API+'/v1/bots/'+slug)).json(); b._t = Date.now(); focusCache.set(slug,b); }
+      if (my !== focusToken || !b.places || !b.places.length) return;
+      ensureFocusLayers();
+      map.getSource('focus').setData({type:'FeatureCollection',features:b.places.map(pl=>({type:'Feature',geometry:{type:'Point',coordinates:[pl.lon,pl.lat]},properties:{hits:pl.hits}}))});
+      map.setPaintProperty('dots','circle-opacity',.25); map.setPaintProperty('glow','circle-opacity',.08); map.setPaintProperty('halo','circle-opacity',.03);
+      if (b.places.length === 1) map.easeTo({center:[b.places[0].lon,b.places[0].lat], zoom:Math.max(map.getZoom(),3.2), duration:700});
+      else { const lons=b.places.map(p=>p.lon), lats=b.places.map(p=>p.lat); map.fitBounds([[Math.min(...lons),Math.min(...lats)],[Math.max(...lons),Math.max(...lats)]],{padding:80,maxZoom:4,duration:700}); }
+    }catch(e){}
+  }, 120);
+}
+function unfocusBot(){ if(!map) return; clearTimeout(focusTimer); focusToken++;
+  if (map.getSource('focus')) map.getSource('focus').setData({type:'FeatureCollection',features:[]});
+  if (map.getLayer('dots')) { map.setPaintProperty('dots','circle-opacity',1); map.setPaintProperty('glow','circle-opacity',.35); map.setPaintProperty('halo','circle-opacity',.10); }
+  map.easeTo({...HOME, duration:700});
+}
 
 // ---------- search + bot profile
 let timer;

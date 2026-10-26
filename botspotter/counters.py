@@ -11,6 +11,7 @@ Key layout (all prefixed ``bs:``)::
                                     label, first_seen, last_seen, sites(HLL key), fam
   bs:bot:<fp>:h:<YYYYMMDDHH>        per-bot hourly hits (sparkline, expires 14d)
   bs:bot:<fp>:countries             ZSET country -> hits
+  bs:bot:<fp>:gh                    ZSET geohash(3) -> hits (where this bot comes from; map focus)
   bs:bot:<fp>:sites                 HLL of site ids (how many sites it crawled)
   bs:bot:<fp>:recent                LIST of last 25 sightings {ts,site,country,gh} (newest first)
   bs:sightings                      LIST of last 100 sightings across all bots (live ticker)
@@ -112,6 +113,7 @@ class Counters:
             p.incr(f"bs:bot:{e.fp}:h:{h}")
             p.expire(f"bs:bot:{e.fp}:h:{h}", 14 * 86400)
             p.zincrby(f"bs:bot:{e.fp}:countries", 1, e.country)
+            p.zincrby(f"bs:bot:{e.fp}:gh", 1, e.gh[:3])
             p.pfadd(f"bs:bot:{e.fp}:sites", e.site)
             p.hset(f"bs:bot:{e.fp}", mapping={"last_seen": ts, "last_country": e.country, "last_site": e.site})
             sighting = orjson.dumps({"ts": ts, "site": e.site, "country": e.country, "gh": e.gh,
@@ -370,7 +372,13 @@ class Counters:
         p.zrevrange(f"bs:bot:{fp}:countries", 0, 9, withscores=True)
         p.pfcount(f"bs:bot:{fp}:sites")
         p.zrange(f"bs:fam:{m.get('fam', '')}", 0, -1, withscores=True)
-        hits, countries, n_sites, lineage = await p.execute()
+        p.zrevrange(f"bs:bot:{fp}:gh", 0, 29, withscores=True)
+        hits, countries, n_sites, lineage, places_raw = await p.execute()
+        from .geohash import decode as _dec
+        places = []
+        for gh, n in places_raw:
+            la, lo = _dec(gh.decode())
+            places.append({"lat": round(la, 3), "lon": round(lo, 3), "hits": int(n)})
         base = int(time.time() // 3600) * 3600
         p = self.r.pipeline(transaction=False)
         for i in range(23, -1, -1):
@@ -398,6 +406,7 @@ class Counters:
             "discovered": float(m["discovered"]) if m.get("discovered") else None,
             "hits": int(hits or 0), "sites": int(n_sites),
             "countries": [{"country": c.decode(), "hits": int(s)} for c, s in countries],
+            "places": places,
             "hourly": hourly,
             "last_country": m.get("last_country"), "last_site": m.get("last_site"),
             "recent": [{k: v for k, v in r.items() if k not in ("fp", "name", "category")} for r in recent],

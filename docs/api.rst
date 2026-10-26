@@ -48,27 +48,41 @@ Called by the portal page with ``{"page", "ref"}`` (``ref`` = ``document.referre
 Read API (public, Redis-only, cache headers on everything)
 ----------------------------------------------------------
 
-+--------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------+-------+
-| endpoint                                                     | returns                                                                                                                                   | cache |
-+==============================================================+===========================================================================================================================================+=======+
-| ``GET /v1/snapshot``                                         | counters, top bots, categories, hourly series, feed, sightings, humans, network                                                           | 2 s   |
-+--------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------+-------+
-| ``GET /v1/map?precision=2..4&limit=``                        | geohash buckets ``{gh, lat, lon, hits}``                                                                                                  | 5 s   |
-+--------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------+-------+
-| ``GET /v1/bots/{slug}``                                      | bot profile: name, operator, category, first/last seen, last country/site, hits, sites, countries, hourly, recent sightings, evolved_from | 10 s  |
-+--------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------+-------+
-| ``GET /v1/search?q=&limit=``                                 | prefix then substring match on names                                                                                                      | 10 s  |
-+--------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------+-------+
-| ``GET /v1/feed?limit=``                                      | newly discovered bots                                                                                                                     | 5 s   |
-+--------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------+-------+
-| ``GET /v1/sightings?limit=``                                 | live ticker of recent hits                                                                                                                | 2 s   |
-+--------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------+-------+
-| ``GET /v1/sensors?limit=``                                   | leaderboard of sites by catches                                                                                                           | 30 s  |
-+--------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------+-------+
-| ``GET /`` ``/about`` ``/sensors`` ``/terms`` ``/bot/{slug}`` | the portal (one HTML file, client-routed)                                                                                                 | 60 s  |
-+--------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------+-------+
-| ``GET /healthz``                                             | ``{"ok": true, "service": "api"}``                                                                                                        | —     |
-+--------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------+-------+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 58 12
+
+   * - endpoint
+     - returns
+     - cache
+   * - ``GET /v1/snapshot``
+     - counters, top bots, categories, hourly series, feed, sightings, humans, network
+     - 2 s
+   * - ``GET /v1/map?precision=2..4&limit=``
+     - geohash buckets ``{gh, lat, lon, hits}``
+     - 5 s
+   * - ``GET /v1/bots/{slug}``
+     - bot profile: name, operator, category, first/last seen, last country/site, hits, sites, countries, hourly, recent sightings, ``places`` (geohash-3 cells with hit counts, for the map focus), evolved_from
+     - 10 s
+   * - ``GET /v1/search?q=&limit=``
+     - prefix then substring match on names
+     - 10 s
+   * - ``GET /v1/feed?limit=``
+     - newly discovered bots
+     - 5 s
+   * - ``GET /v1/sightings?limit=``
+     - live ticker of recent hits
+     - 2 s
+   * - ``GET /v1/sensors?limit=``
+     - leaderboard of sites by catches
+     - 30 s
+   * - ``GET /`` ``/about`` ``/sensors`` ``/terms`` ``/bot/{slug}``
+     - the portal (one HTML file, client-routed)
+     - 60 s
+   * - ``GET /healthz``
+     - ``{"ok": true, "service": "api"}``
+     - —
+
 
 Every request to the API service also passes through the **self-sensor** middleware: bots that visit the portal are counted under site ``botspotter-portal``.
 

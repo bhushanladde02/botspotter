@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-25 22:05
+     - UI: hovering a bot (lists, feed, ticker) highlights its origin cells on the map in pink and eases the camera there; per-bot geohash buckets (``bs:bot:<fp>:gh``, fill from new hits onward)
+     - Bhushan
    * - 2026-10-25 22:00
      - Feature: live "humans watching now" (30 s heartbeat, 90 s window) in the header; public Audience page ``/stats`` + ``/v1/stats/humans`` JSON/CSV (daily uniques, views, countries, sources; 3-year retention of daily aggregates)
      - Bhushan
