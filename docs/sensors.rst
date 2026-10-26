@@ -59,8 +59,8 @@ The wire format (for any other stack)
 
 A bare JSON array or newline-delimited JSON is also accepted. Max 1000 events per request. Response ``202 {"accepted": n, "bots": m, "site": "..."}``.
 
-Caddy sidecar (any site behind Caddy, no code; how sharpen.com reports)
-------------------------------------------------------------------------
+Caddy sidecar (any site behind Caddy, no code; how sharpenscore.com reports)
+-----------------------------------------------------------------------------
 
 Caddy streams its JSON access log over TCP to a small Vector container next to BotSpotter; Vector keeps non-browser
 requests, reduces them to the wire format (header *names*, UA, IP, method, status, robots.txt flag) and posts them to
@@ -77,11 +77,17 @@ ingest on the Docker network. The site's own containers are untouched.
 
    ``soft_start`` means Caddy loads and serves even if Vector is unreachable (those log lines are dropped). Reload Caddy
    (``docker exec deploy-caddy-1 caddy reload --config /etc/caddy/Caddyfile`` or your usual deploy).
-2. BotSpotter side (already in ``docker-compose.vm.yml`` as ``sensor-vector`` for ``sharpen.com``): config
-   ``sensors/caddy/vector.toml``; env ``BS_HOST`` (only that host's lines are forwarded), ``BS_KEY`` (the site's sensor
-   key — ``remote.sh`` derives ``SHARPEN_SENSOR_KEY`` from ``BS_SENSOR_KEYS``), ``BS_ENDPOINT``.
+2. BotSpotter side (already in ``docker-compose.vm.yml`` as ``sensor-vector`` for ``sharpenscore.com``): config
+   ``sensors/caddy/vector.toml``; env ``BS_HOST`` (only lines whose ``Host`` *contains* this string are forwarded —
+   it must be the real host, ``sharpenscore.com``, not an abbreviation: a value that does not match drops every line
+   with no error), ``BS_KEY`` (the site's sensor key — ``remote.sh`` derives ``SHARPEN_SENSOR_KEY`` from
+   ``BS_SENSOR_KEYS``), ``BS_ENDPOINT``.
 3. Check: ``docker compose -f docker-compose.yml -f docker-compose.vm.yml logs --tail 20 sensor-vector`` (no VRL
-   errors) and the Live page's "Sensors with most catches" card shows ``sharpen`` within minutes.
+   errors — a container that keeps restarting is a VRL compile error, and the log names the line. ``vector validate``
+   does *not* compile VRL, so the pre-deploy check is to start it for a few seconds: ``BS_KEY=k BS_HOST=h
+   BS_ENDPOINT=http://127.0.0.1:1 vector --config sensors/caddy/vector.toml`` and look for *Vector has started*) and
+   the Live page's "Sensors with most catches" card shows ``sharpen`` within minutes. To trigger a hit yourself:
+   ``curl -A "Mozilla/5.0 (compatible; GPTBot/1.0)" https://sharpenscore.com/robots.txt``.
 
 Another host on the same Caddy = another ``log`` block in its site and a second ``sensor-vector`` service with its
 own ``BS_HOST``/``BS_KEY`` (or one service and a routing transform — see the comments in the TOML).

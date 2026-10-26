@@ -4,7 +4,7 @@
 # non-browser requests, reduces them to the sensor wire format and posts batches to ingest.
 # In the site's Caddyfile block:
 #
-#     example.com {
+#     example.com {      # BS_HOST must be a substring of this host, e.g. example.com
 #         log {
 #             output net tcp/bs-vector:9000 {
 #                 soft_start          # Caddy keeps serving if Vector is down (lines are dropped)
@@ -43,6 +43,8 @@ cc = string(get!(hdr, ["Cf-Ipcountry", 0])) ?? ""
 cfip = string(get!(hdr, ["Cf-Connecting-Ip", 0])) ?? ""
 ip = if cfip != "" { cfip } else { string(req.client_ip) ?? string(req.remote_ip) ?? "" }
 uri = string(req.uri) ?? "/"
+# VRL does not accept an `if` expression as a value inside an object literal: compute it first.
+path = if ends_with(uri, "robots.txt") { "/robots.txt" } else { "/" }
 . = {
   "ts": to_float(ev.ts) ?? to_unix_timestamp(now()),
   "ip": ip,
@@ -51,7 +53,7 @@ uri = string(req.uri) ?? "/"
   "cf_country": cc,
   "method": string(req.method) ?? "GET",
   "status": to_int(ev.status) ?? 200,
-  "path": if ends_with(uri, "robots.txt") { "/robots.txt" } else { "/" }
+  "path": path
 }
 '''
 
