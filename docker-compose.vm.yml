@@ -32,9 +32,9 @@ services:
     environment: { BS_RUNTIME_DIR: /data }
     deploy: { resources: { limits: { memory: 192M } } }
 
-  # Sensor for sharpen.com (same VM, same Caddy): Caddy logs over TCP -> Vector -> ingest.
+  # Sensor for sharpenscore.com (same VM, same Caddy): Caddy logs over TCP -> Vector -> ingest.
   # Caddy side: a `log { output net tcp/bs-vector:9000 { soft_start } format json }` block
-  # in the sharpen.com site (docs/sensors.rst "Caddy sidecar"). SHARPEN_SENSOR_KEY is derived
+  # in the sharpenscore.com site (docs/sensors.rst "Caddy sidecar"). SHARPEN_SENSOR_KEY is derived
   # from BS_SENSOR_KEYS by deploy/remote.sh.
   sensor-vector:
     image: timberio/vector:0.42.0-alpine
@@ -42,7 +42,7 @@ services:
     volumes: ["./sensors/caddy/vector.toml:/etc/vector/vector.toml:ro"]
     environment:
       BS_KEY: ${SHARPEN_SENSOR_KEY:-}
-      BS_HOST: sharpen.com
+      BS_HOST: sharpenscore.com   # Vector forwards only lines whose Host contains this; the site is sharpenscore.com, not sharpen.com
       BS_ENDPOINT: http://ingest:8001/v1/ingest
       VECTOR_LOG: warn
     depends_on: [ingest]
