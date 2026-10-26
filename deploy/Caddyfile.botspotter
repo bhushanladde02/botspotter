@@ -1,0 +1,12 @@
+# BotSpotter site block, imported by Sharpen's Caddyfile on the shared VM.
+# Caddy obtains the certificate automatically (HTTP-01 works behind Cloudflare
+# with SSL mode "Full"). After first success, switch Cloudflare to Full (strict).
+botspotter.app, www.botspotter.app {
+	encode zstd gzip
+	header -Server
+	@ingest path /v1/ingest /v1/beacon
+	reverse_proxy @ingest bs-ingest:8001
+	reverse_proxy bs-api:8000 {
+		header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+	}
+}

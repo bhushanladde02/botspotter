@@ -25,7 +25,7 @@ import urllib.request
 from collections import deque
 
 __version__ = "0.1.0"
-DEFAULT_ENDPOINT = "https://botspotter.io/v1/ingest"
+DEFAULT_ENDPOINT = "https://botspotter.app/v1/ingest"
 
 
 class Reporter:

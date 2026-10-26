@@ -37,7 +37,7 @@ ua = downcase(string!(.ua))
 [sinks.botspotter]
 type = "http"
 inputs = ["drop_browsers"]
-uri = "${BS_ENDPOINT:-https://botspotter.io/v1/ingest}"
+uri = "${BS_ENDPOINT:-https://botspotter.app/v1/ingest}"
 method = "post"
 encoding.codec = "json"
 batch.max_events = 500

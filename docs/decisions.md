@@ -52,3 +52,8 @@ Each entry: context → decision → consequences. Add one when a non-obvious ch
 **Context.** Wanted a public URL to try the product before buying a domain or touching the Oracle VM.
 **Decision.** `render.yaml` runs `scripts/dev.py` (memory stream + fakeredis + memory store) as a free Render web service. Zero infra, zero cost, data is ephemeral by design.
 **Consequences.** Not for real sensors. The Oracle/Compose stack remains the production path; the demo URL is retired once a domain + VM are live.
+
+## 012 — Production on the shared A1 VM behind Sharpen's Caddy (2026-10-25)
+**Context.** The free-tier A1 allowance is already used by the Sharpen VM (1 OCPU / 6 GB, 4.6 GB free, Docker + Caddy on :80/:443). The other VM is a 1 GB AMD micro running the swing bot — too small.
+**Decision.** Deploy BotSpotter's Compose stack on the A1 without its own `edge`; join Caddy's docker network and add a `botspotter.app` site block via one `import` line (`docker-compose.vm.yml`, `deploy/Caddyfile.botspotter`, `deploy/oracle.sh`). Memory trimmed to ≈2.4 GB; 1 ingest worker.
+**Consequences.** Shares 1 OCPU with Sharpen — fine for launch traffic; if either app gets busy, the next step is a second A1 (needs free-tier capacity) or paid. Caddy does TLS (ACME), so Cloudflare can run Full (strict). Nginx `proxy_cache` is gone; Cloudflare's edge cache covers `/v1/snapshot`.

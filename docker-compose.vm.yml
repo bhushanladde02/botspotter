@@ -1,0 +1,57 @@
+# Overlay for the shared Oracle A1 VM (1 OCPU / 6 GB, Sharpen already on it).
+#   docker compose -f docker-compose.yml -f docker-compose.vm.yml up -d --build
+#
+# Differences from the base file:
+#   - no `edge` (Sharpen's Caddy owns :80/:443 and proxies botspotter.app to us)
+#   - api + ingest also join Caddy's docker network (CADDY_NETWORK in .env)
+#   - memory/worker trims for a 1-OCPU box shared with another app
+services:
+  edge:
+    profiles: ["disabled"]
+
+  ingest:
+    command: ["granian", "--interface", "asgi", "--host", "0.0.0.0", "--port", "8001",
+              "--workers", "1", "--loop", "uvloop", "botspotter.ingest.app:app"]
+    networks:
+      default: {}
+      web: { aliases: [bs-ingest] }
+    deploy: { resources: { limits: { memory: 192M } } }
+
+  api:
+    networks:
+      default: {}
+      web: { aliases: [bs-api] }
+    deploy: { resources: { limits: { memory: 192M } } }
+
+  aggregator:
+    deploy: { resources: { limits: { memory: 192M } } }
+
+  redis:
+    command: ["redis-server", "--maxmemory", "192mb", "--maxmemory-policy", "noeviction",
+              "--save", "60", "1000", "--appendonly", "yes"]
+    deploy: { resources: { limits: { memory: 256M } } }
+
+  redpanda:
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 640M
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --node-id 0
+      - --check=false
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+      - --set redpanda.auto_create_topics_enabled=true
+      - --set redpanda.log_retention_ms=604800000
+    deploy: { resources: { limits: { memory: 896M } } }
+
+  postgres:
+    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=30",
+              "-c", "timescaledb.max_background_workers=2"]
+    deploy: { resources: { limits: { memory: 640M } } }
+
+networks:
+  web:
+    external: true
+    name: ${CADDY_NETWORK:-deploy_default}

@@ -226,7 +226,7 @@ BOTSPOTTER_KEY = "YOUR_KEY"</pre>
   </ul>
 
   <h2>1. Who we are</h2>
-  <p>BotSpotter (&ldquo;we&rdquo;, &ldquo;us&rdquo;) is an independent, non-commercial project operated by Bhushan Ladde, California, USA. Contact: <a href="mailto:hello@botspotter.io">hello@botspotter.io</a>.</p>
+  <p>BotSpotter (&ldquo;we&rdquo;, &ldquo;us&rdquo;) is an independent, non-commercial project operated by Bhushan Ladde, California, USA. Contact: <a href="mailto:hello@botspotter.app">hello@botspotter.app</a>.</p>
 
   <h2>2. Your responsibilities as a sensor operator</h2>
   <ul>
@@ -445,8 +445,8 @@ function route(){ const page = PAGES[location.pathname] || null; document.body.c
   $('nav_about').classList.toggle('on', page==='about'); $('nav_sensors').classList.toggle('on', page==='sensors'||page==='terms'); $('nav_live').classList.toggle('on', !page);
   if (!page && map) setTimeout(()=>map.resize(), 50); }
 function requestKey(e){ e.preventDefault(); const f = new FormData(e.target); const body = `Site: ${f.get('site')}\nEmail: ${f.get('email')}\nStack: ${f.get('stack')||'-'}\n\nI own/administer this site and accept the Sensor Terms.`;
-  location.href = 'mailto:hello@botspotter.io?subject=' + encodeURIComponent('BotSpotter sensor key: ' + f.get('site')) + '&body=' + encodeURIComponent(body);
-  const m = $('keymsg'); m.style.display='block'; m.textContent = 'Opening your email client — send that message and we will reply with your key. If nothing opened, email hello@botspotter.io with your site name.'; return false; }
+  location.href = 'mailto:hello@botspotter.app?subject=' + encodeURIComponent('BotSpotter sensor key: ' + f.get('site')) + '&body=' + encodeURIComponent(body);
+  const m = $('keymsg'); m.style.display='block'; m.textContent = 'Opening your email client — send that message and we will reply with your key. If nothing opened, email hello@botspotter.app with your site name.'; return false; }
 window.addEventListener('popstate', route); route();
 if (location.pathname.startsWith('/bot/')) openBot(location.pathname.slice(5));
 

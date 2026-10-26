@@ -34,7 +34,22 @@ python scripts/seed_traffic.py --url http://localhost/v1/ingest --key <a key fro
 ```
 Schema is applied automatically from `db/schema.sql` on first Postgres start. Topics auto-create.
 
-## Oracle Cloud deploy (Always Free, Ampere A1, 2 OCPU / 12 GB)
+## Production: shared Oracle A1 VM behind Sharpen's Caddy (current setup)
+VM `ubuntu@129.213.153.181` (A1, 1 OCPU / 6 GB, aarch64), key `~/.ssh/sharpen_vm`. Sharpen's Compose
+project (`deploy-*` containers) owns :80/:443 via Caddy; BotSpotter runs as a second site behind it.
+```bash
+deploy/oracle.sh          # from your Mac; idempotent — rerun for every upgrade
+```
+What it does: clone/pull `main` into `~/botspotter` on the VM → generate `.env` on first run (secrets,
+sensor keys, `CADDY_NETWORK`) → `docker compose -f docker-compose.yml -f docker-compose.vm.yml up -d --build`
+→ wait for `/healthz` → copy `deploy/Caddyfile.botspotter` next to Sharpen's Caddyfile, append one
+`import` line (Caddyfile backed up first), validate, reload Caddy → print the sensor keys.
+Cloudflare: DNS `A @ → 129.213.153.181` proxied, `CNAME www → botspotter.app` proxied; SSL mode **Full**
+until Caddy has its certificate, then **Full (strict)**. Rate-limit rule on `/v1/ingest` (see below).
+Memory budget on this box (`docker-compose.vm.yml`): Redpanda 896M, Postgres 640M, Redis 256M, 3× app 192M ≈ 2.4 GB.
+Logs: `ssh -i ~/.ssh/sharpen_vm ubuntu@129.213.153.181 'cd botspotter && docker compose logs -f --tail 100 aggregator'`.
+
+## Oracle Cloud deploy on a dedicated VM (Always Free, Ampere A1, 2 OCPU / 12 GB)
 1. Create the instance (Ubuntu 24.04 aarch64). Open TCP 80 and 443 in the VCN security list.
 2. `sudo apt install docker.io docker-compose-v2 git -y && sudo usermod -aG docker $USER`
 3. `git clone <repo> ~/botspotter && cd ~/botspotter && cp .env.example .env && nano .env`
@@ -47,7 +62,7 @@ Schema is applied automatically from `db/schema.sql` on first Postgres start. To
 ## Sensor keys
 - v1: `BS_SENSOR_KEYS="key:site_id,..."` in `.env`. Restart `ingest` after editing (`docker compose up -d ingest`).
 - Key requests arrive by email from the `/sensors` form (subject "BotSpotter sensor key: <site>"); the form requires ticking acceptance of `/terms`. Keep the email as the acceptance record. Then `openssl rand -hex 16`, add `hex:their-site`, reply with the key + link to `/sensors`.
-- Set up the `hello@botspotter.io` mailbox (or change the address in `web/index.html`) before launch.
+- Set up the `hello@botspotter.app` mailbox (or change the address in `web/index.html`) before launch.
 - To revoke: remove the pair, restart ingest. Their history stays under the `site_id`.
 - Later (`growth.md` tier 2): move to the `sensors` table (`key_hash = sha256(key)`); ingest already accepts sha256-hashed keys in the map.
 
