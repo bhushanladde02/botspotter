@@ -535,6 +535,7 @@ map.on('load',()=>{
 
 // ---------- hover a bot -> light up where it comes from
 const HOME = {center:[12,22], zoom:1.7};
+const HOVER_INTENT_MS = 150;   // rest time on a row before the map moves (stops the "dancing")
 let focusTimer = null, focusToken = 0, focusCache = new Map(), focusLeave = null, focusSlug = null;
 const PL = new Map();   // slug -> places, filled from every snapshot so hover needs no request
 function learnPlaces(s){
@@ -560,17 +561,18 @@ function focusBot(slug){ if(!map || !slug) return;
   clearTimeout(focusLeave); clearTimeout(focusTimer); const my = ++focusToken;
   if (slug === focusSlug) return;            // re-entering the same row: keep the current view
   focusSlug = slug;
-  const known = PL.get(slug);
-  if (known) { showPlaces(known); return; }   // instant: nothing to fetch
-  // Not in the snapshot (search result, old modal link): one short wait, then one request, cached.
+  // Hover intent: the camera moves only once the cursor has rested on a row for
+  // HOVER_INTENT_MS. Sweeping down the list therefore produces one move, not one per row.
   focusTimer = setTimeout(async()=>{
-    try{
+    const known = PL.get(slug);
+    if (known) { showPlaces(known); return; }   // nothing to fetch
+    try{                                        // search result / old link: one request, cached
       let b = focusCache.get(slug);
       if(!b){ b = await (await fetch(API+'/v1/bots/'+slug)).json(); focusCache.set(slug,b); }
       if (my !== focusToken || !b.places || !b.places.length) return;
       PL.set(slug, b.places); showPlaces(b.places);
     }catch(e){}
-  }, 40);
+  }, HOVER_INTENT_MS);
 }
 function unfocusBot(){ if(!map) return; clearTimeout(focusTimer); focusToken++;
   // Short grace period: sliding the mouse to the next row must not bounce the camera home.
