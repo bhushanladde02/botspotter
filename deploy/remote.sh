@@ -49,8 +49,11 @@ echo "caddy network: $NET"
 # Any failure from here on (health, smoke) rebuilds the previous revision so a bad
 # deploy costs minutes, not hours (2026-10-26: a migration bug left the site down
 # until a manual checkout). Disable with ROLLBACK=0 when debugging on the box.
+FAILED_CMD=""
+trap 'FAILED_CMD="line $LINENO: $BASH_COMMAND"' ERR
 rollback() {
   rc=$?
+  [ "$rc" -ne 0 ] && echo "!! failed at ${FAILED_CMD:-unknown command} (exit $rc)"
   if [ "$rc" -ne 0 ] && [ -n "$PREV_REV" ] && [ "${ROLLBACK:-1}" = 1 ] && [ "$(git rev-parse HEAD)" != "$PREV_REV" ]; then
     echo "!! deploy failed (exit $rc) — rolling back to ${PREV_REV:0:8}"
     git checkout --quiet "$PREV_REV"
@@ -64,12 +67,16 @@ trap rollback EXIT
 step "2b/7 runtime data (GeoIP, crawler ranges) + weekly refresh cron"
 chmod +x deploy/refresh-data.sh
 MAXMIND_ACCOUNT_ID="${MAXMIND_ACCOUNT_ID:-}" MAXMIND_LICENSE_KEY="${MAXMIND_LICENSE_KEY:-}" RESTART=0 bash deploy/refresh-data.sh || echo "refresh-data: non-fatal failure"
-# cron needs the secrets too: kept in ~/.botspotter-maxmind (0600), never in the repo
-if [ -n "${MAXMIND_LICENSE_KEY:-}" ]; then
-  printf 'MAXMIND_ACCOUNT_ID=%s\nMAXMIND_LICENSE_KEY=%s\n' "$MAXMIND_ACCOUNT_ID" "$MAXMIND_LICENSE_KEY" > "$HOME/.botspotter-maxmind"; chmod 600 "$HOME/.botspotter-maxmind"
-fi
-REFRESH_LINE="23 7 * * 3 . $HOME/.botspotter-maxmind 2>/dev/null; MAXMIND_ACCOUNT_ID=\$MAXMIND_ACCOUNT_ID MAXMIND_LICENSE_KEY=\$MAXMIND_LICENSE_KEY bash $APP_DIR/deploy/refresh-data.sh >> $HOME/botspotter-backups/refresh.log 2>&1"
-( crontab -l 2>/dev/null | grep -v 'botspotter/deploy/refresh-data.sh'; echo "$REFRESH_LINE" ) | crontab -
+# cron needs the secrets too: kept in ~/.botspotter-maxmind (0600), never in the repo.
+# None of this may fail the deploy: the map degrades to country level, nothing else.
+{
+  if [ -n "${MAXMIND_LICENSE_KEY:-}" ]; then
+    printf 'MAXMIND_ACCOUNT_ID=%s\nMAXMIND_LICENSE_KEY=%s\n' "${MAXMIND_ACCOUNT_ID:-}" "$MAXMIND_LICENSE_KEY" > "$HOME/.botspotter-maxmind" && chmod 600 "$HOME/.botspotter-maxmind"
+  fi
+  mkdir -p "$HOME/botspotter-backups"
+  REFRESH_LINE="23 7 * * 3 . $HOME/.botspotter-maxmind 2>/dev/null; MAXMIND_ACCOUNT_ID=\$MAXMIND_ACCOUNT_ID MAXMIND_LICENSE_KEY=\$MAXMIND_LICENSE_KEY bash $APP_DIR/deploy/refresh-data.sh >> $HOME/botspotter-backups/refresh.log 2>&1"
+  { crontab -l 2>/dev/null | grep -v 'botspotter/deploy/refresh-data.sh' || true; echo "$REFRESH_LINE"; } | crontab - && echo "weekly refresh cron installed"
+} || echo "refresh cron: could not install (non-fatal)"
 
 step "3/7 build + start"
 $COMPOSE up -d --build --remove-orphans
