@@ -144,6 +144,11 @@
   <div class="card"><h3>Most crawled countries</h3><div id="countries"></div></div>
   <div class="card"><h3>Operators</h3><div id="ops"></div></div>
   <div class="card"><h3>Sensors with most catches</h3><div id="sensors"></div></div>
+  <div class="card"><h3>Humans · where from</h3>
+    <div class="legend" style="margin:0 0 8px"><span style="--c:var(--pink)">countries</span><span style="--c:var(--cyan)">referring sites</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div id="h_countries"></div><div id="h_sources"></div></div>
+    <div class="m" style="font-size:11px;margin-top:8px">referrer = domain only; "direct" = typed, bookmarked or from an app that hides it</div>
+  </div>
 </div>
 
 <section class="about" id="page-about">
@@ -252,7 +257,7 @@ BOTSPOTTER_KEY = "YOUR_KEY"</pre>
   <p><strong>Sent by the sensor, per request your server judges to be automated:</strong> the names (not values) of the request headers in order; the User-Agent string; the client IP address; the <span class="ex">CF-IPCountry</span> header if present; HTTP method and status code; the timestamp; and a flag for whether the path was <span class="ex">robots.txt</span>. Requests that look like ordinary browsers are filtered on your server and not sent. No page content, cookies, header values, query strings, form data, or other paths are sent.</p>
   <p><strong>Processed on arrival and then discarded:</strong> the IP address. We use it in memory to derive (a) a country and approximate region, and (b) for unidentified bots only, a coarse network prefix (/16, up to 65,536 addresses) that becomes part of the bot's fingerprint hash. The address itself is never written to disk, logs, or backups.</p>
   <p><strong>Stored:</strong> timestamp, your site id, the bot's fingerprint hash and derived name, a version-stripped User-Agent family, bot operator and category, country, region, a coarse geohash, and the robots.txt flag. Raw events are kept 90 days; hourly aggregates indefinitely.</p>
-  <p><strong>Human visitors to this portal:</strong> we count unique visitors using salted hashes of IP and User-Agent that are fed only into HyperLogLog counters (a probabilistic structure that cannot be reversed or enumerated). The daily hash includes the date and powers &ldquo;today&rdquo; and &ldquo;this week&rdquo;; a second hash without the date powers &ldquo;all time&rdquo; so a returning person is counted once. No per-visitor record is written anywhere. No cookies, no local storage identifiers, no third-party analytics scripts.</p>
+  <p><strong>Human visitors to this portal:</strong> we count unique visitors using salted hashes of IP and User-Agent that are fed only into HyperLogLog counters (a probabilistic structure that cannot be reversed or enumerated). The daily hash includes the date and powers &ldquo;today&rdquo; and &ldquo;this week&rdquo;; a second hash without the date powers &ldquo;all time&rdquo; so a returning person is counted once. We also count visits per country and per referring <em>domain</em> (e.g. linkedin.com, &ldquo;direct&rdquo;) &mdash; never the referring page or path. No per-visitor record is written anywhere. No cookies, no local storage identifiers, no third-party analytics scripts.</p>
   <p><strong>Legal basis (where GDPR/UK GDPR applies):</strong> legitimate interest in measuring automated traffic. We have designed the processing so that no personal data is retained; the IP address is processed transiently for seconds. If you believe a stored record identifies you, email us and we will remove it.</p>
 
   <h2>6. Published data and your site id</h2>
@@ -422,6 +427,8 @@ function paint(s){
     rows($('feed'), s.feed.slice(0,10), f => `<div class="row" onclick="openBot('${esc(f.slug)}')" style="cursor:pointer"><span><span class="n">${esc(f.name)}</span><div class="m">${esc(f.ua_family)} · ${f.sites} site${f.sites>1?'s':''} · ${esc(f.country)}</div></span><span class="m">${new Date(f.ts*1000).toLocaleTimeString()}</span></div>`);
     rows($('countries'), s.bots.by_country.slice(0,10), c => `<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h">${fmt(c.hits)}</span></div>`);
     rows($('ops'), s.bots.by_operator.slice(0,10), o => `<div class="row"><span class="n">${esc(o.operator)}</span><span class="h">${fmt(o.hits)}</span></div>`);
+    rows($('h_countries'), (s.humans.by_country||[]).slice(0,8), c => `<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h" style="color:var(--pink)">${fmt(c.views)}</span></div>`);
+    rows($('h_sources'), (s.humans.by_source||[]).slice(0,8), c => `<div class="row"><span class="n" style="font-size:12px">${esc(c.source)}</span><span class="h" style="color:var(--cyan)">${fmt(c.views)}</span></div>`);
 }
 async function refreshSensors(){
   try{ const s = await (await fetch(API+'/v1/sensors')).json(); rows($('sensors'), s.sensors.slice(0,10), x => `<div class="row"><span class="n">${esc(x.site)}</span><span class="h">${fmt(x.hits)}</span></div>`);}catch(e){}
@@ -533,7 +540,7 @@ window.addEventListener('popstate', route); route();
 if (location.pathname.startsWith('/bot/')) openBot(location.pathname.slice(5));
 
 // ---------- human beacon (no cookies, no ids: server hashes ip+ua+day)
-fetch((window.BS_INGEST || API) + '/v1/beacon', {method:'POST', body: JSON.stringify({page: location.pathname}), headers:{'content-type':'application/json'}, keepalive:true}).catch(()=>{});
+fetch((window.BS_INGEST || API) + '/v1/beacon', {method:'POST', body: JSON.stringify({page: location.pathname, ref: document.referrer || ''}), headers:{'content-type':'application/json'}, keepalive:true}).catch(()=>{});
 
 refresh(); refreshSensors(); setInterval(refresh, 2000); setInterval(refreshSensors, 30000); setInterval(()=>refreshMap(true), 10000);
 </script>

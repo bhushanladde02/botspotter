@@ -146,6 +146,21 @@ async def test_human_visitor_counter(world):
     assert 0 <= snap["peak"]["humans"]["hour_utc"] <= 23
 
 
+async def test_human_sources_and_countries(world):
+    ic, ac, agg, store, counters = world
+    cases = [("1.1.1.1", "IN", "https://www.linkedin.com/feed/update/123"), ("2.2.2.2", "US", "https://t.co/abc"),
+             ("3.3.3.3", "US", ""), ("4.4.4.4", "DE", "https://botspotter.app/about"), ("5.5.5.5", "US", "https://news.ycombinator.com/item?id=1")]
+    for ip, cc, ref in cases:
+        await ic.post("/v1/beacon", json={"page": "/", "ref": ref},
+                      headers={"x-forwarded-for": ip, "user-agent": CHROME_UA, "cf-ipcountry": cc})
+    await drain(agg)
+    h = (await ac.get("/v1/snapshot")).json()["humans"]
+    assert {c["country"]: c["views"] for c in h["by_country"]} == {"US": 3, "IN": 1, "DE": 1}
+    src = {c["source"]: c["views"] for c in h["by_source"]}
+    assert src == {"linkedin.com": 1, "x.com": 1, "direct": 1, "hacker news": 1}  # internal referrer excluded
+    assert all(v.ref and "/" not in v.ref for v in store.visits)  # domains only, never paths
+
+
 async def test_returning_human_counts_once_all_time(world, monkeypatch):
     """Daily hash rotates (privacy) but the all-time HLL uses the stable hash."""
     import botspotter.enrich as en

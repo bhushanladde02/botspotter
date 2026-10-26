@@ -24,7 +24,7 @@ Humans on the portal
 Two salted hashes, both fed only into HyperLogLogs (irreversible, no per-visitor record):
 
 -  daily: ``blake2b(VISITOR_SECRET + UTC-day + ip + ua)`` → "humans today / this week" and today's peak hour; rotates daily so visits can't be linked across days in any stored record;
--  stable: ``blake2b(VISITOR_SECRET + "all" + ip + ua)`` → the "humans all time" HLL only, so a returning person is counted once. It is never written to Postgres or any list; an HLL cannot be enumerated or reversed. No cookie, no localStorage, no ID handed to the browser.
+-  stable: ``blake2b(VISITOR_SECRET + "all" + ip + ua)`` → the "humans all time" HLL only, so a returning person is counted once. It is never written to Postgres or any list; an HLL cannot be enumerated or reversed. Per-country and per-referrer-source views are counted (``bs:humans:country``, ``bs:humans:source``); the referrer is reduced to a domain label (``linkedin.com``, ``x.com``, ``direct``) — never the page or path, and our own domain is dropped. No cookie, no localStorage, no ID handed to the browser.
 
 .. _bots-are-not-people--but:
 

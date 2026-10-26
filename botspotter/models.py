@@ -64,6 +64,7 @@ class PortalVisit(BaseModel):
     vs: str = ""  # stable salted hash (no date) — fed ONLY into the all-time HyperLogLog, never stored per visit
     country: str
     page: str = "/"
+    ref: str = "direct"  # referrer DOMAIN only (linkedin.com, news.ycombinator.com, direct) — never a path
 
     def to_bytes(self) -> bytes:
         return orjson.dumps(self.model_dump())

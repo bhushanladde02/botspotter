@@ -38,7 +38,7 @@ Responses: ``202 {"accepted": n, "bots": m, "site": "<site_id>"}`` · ``401`` in
 ``POST /v1/beacon``
 ~~~~~~~~~~~~~~~~~~~
 
-Called by the portal page. Counts a human page view. ``204``.
+Called by the portal page with ``{"page", "ref"}`` (``ref`` = ``document.referrer``). Counts a human page view by country and referrer domain. ``204``.
 
 .. _get-healthz--ok-true-service-ingest:
 
@@ -93,7 +93,9 @@ Snapshot shape
      "bots": {"total_hits": 0, "hits_today": 0, "hits_this_hour": 0, "distinct": 0, "discovered": 0,
               "hourly": [24 ints], "top": [...], "by_country": [...], "by_category": [...],
               "by_operator": [...], "category_hourly": {"training": [24 ints], ...}},
-     "humans": {"views": 0, "views_today": 0, "unique_today": 0, "unique_week": 0, "unique_all": 0},
+     "humans": {"views": 0, "views_today": 0, "unique_today": 0, "unique_week": 0, "unique_all": 0,
+             "by_country": [{"country": "US", "views": 0}], "by_source": [{"source": "linkedin.com", "views": 0}], "by_source_today": [...]},
+  "peak": {"bots": {"hits": 0, "hour_utc": 0}, "humans": {"unique": 0, "hour_utc": 0}, "humans_now": 0},
      "network": {"sensors": 0, "countries": 0},
      "feed": [...], "sightings": [...]
    }

@@ -31,6 +31,9 @@ Key layout (all prefixed ``bs:``)::
   bs:humans:hll:all                 HLL unique humans all time (fed with the stable
                                     hash `vs`, so a returning person counts once)
   bs:humans:hll:h:<YYYYMMDDHH>      HLL unique humans per hour (today's peak; expires 14d)
+  bs:humans:country                 ZSET country -> human views
+  bs:humans:source                  ZSET referrer source (domain / 'direct') -> human views
+  bs:humans:source:d:<YYYYMMDD>     same, per day
   bs:sensors                        ZSET site -> hits
   bs:snapshot                       JSON string, rewritten every second by aggregator
 """
@@ -199,6 +202,10 @@ class Counters:
             p.pfadd(f"bs:humans:hll:h:{_hour(v.ts)}", v.visitor)
             p.expire(f"bs:humans:hll:h:{_hour(v.ts)}", 14 * 86400)
             p.zincrby("bs:humans:country", 1, v.country)
+            if v.ref and v.ref != "internal":
+                p.zincrby("bs:humans:source", 1, v.ref)
+                p.zincrby(f"bs:humans:source:d:{d}", 1, v.ref)
+                p.expire(f"bs:humans:source:d:{d}", 400 * 86400)
         await p.execute()
 
     # -------------------------------------------------------------- snapshot
@@ -224,8 +231,12 @@ class Counters:
         p.lrange("bs:feed", 0, 9)
         p.llen("bs:feed")
         p.lrange("bs:sightings", 0, 19)
+        p.zrevrange("bs:humans:country", 0, 7, withscores=True)
+        p.zrevrange("bs:humans:source", 0, 7, withscores=True)
+        p.zrevrange(f"bs:humans:source:d:{d}", 0, 7, withscores=True)
         (total, today, hour, n_bots, top, countries, cats, ops, n_sensors, n_countries,
-         views, views_today, uniq_today, uniq_week, uniq_all, feed, feed_len, sightings) = await p.execute()
+         views, views_today, uniq_today, uniq_week, uniq_all, feed, feed_len, sightings,
+         h_countries, h_sources, h_sources_today) = await p.execute()
 
         # Resolve names for the top bots in one round trip.
         p = self.r.pipeline(transaction=False)
@@ -299,6 +310,9 @@ class Counters:
                 "unique_today": int(uniq_today),
                 "unique_week": int(uniq_week),
                 "unique_all": int(uniq_all),
+                "by_country": [{"country": c.decode(), "views": int(n)} for c, n in h_countries],
+                "by_source": [{"source": c.decode(), "views": int(n)} for c, n in h_sources],
+                "by_source_today": [{"source": c.decode(), "views": int(n)} for c, n in h_sources_today],
             },
             "peak": peak,
             "network": {"sensors": int(n_sensors), "countries": int(n_countries)},

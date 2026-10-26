@@ -92,14 +92,15 @@ def create_app(stream=None, enricher: Enricher | None = None) -> FastAPI:
         """Called by the portal page's JS. Counts humans. If a bot calls it we
         still count it as a view — bots that run JS are rare and funny."""
         enricher: Enricher = request.app.state.enricher
-        page = "/"
+        page, ref = "/", request.headers.get("referer", "")
         try:
             body = orjson.loads(await request.body() or b"{}")
             page = str(body.get("page", "/"))
+            ref = str(body.get("ref") or ref)  # the page sends document.referrer (the HTTP Referer is the portal itself)
         except Exception:
             pass
         visit = enricher.portal_visit(
-            client_ip(request), request.headers.get("user-agent", ""), request.headers.get("cf-ipcountry", ""), page
+            client_ip(request), request.headers.get("user-agent", ""), request.headers.get("cf-ipcountry", ""), page, ref
         )
         await request.app.state.stream.publish(settings.topic_portal_visits, visit.visitor.encode(), visit.to_bytes())
         return Response(status_code=204)

@@ -29,6 +29,33 @@ def ua_host(ua: str) -> str:
     return (m.group(1) or m.group(2) or "").lower() if m else ""
 
 
+_SOURCE_ALIASES = {
+    "t.co": "x.com", "twitter.com": "x.com", "lnkd.in": "linkedin.com", "l.facebook.com": "facebook.com",
+    "m.facebook.com": "facebook.com", "out.reddit.com": "reddit.com", "old.reddit.com": "reddit.com",
+    "news.ycombinator.com": "hacker news", "com.linkedin.android": "linkedin.com",
+}
+
+
+def referrer_source(referrer: str) -> str:
+    """Reduce a Referer header to a source label: the registrable-ish host with
+    common redirectors folded (t.co -> x.com). Empty -> 'direct'. Own domain ->
+    'internal' (ignored by the aggregator)."""
+    if not referrer:
+        return "direct"
+    try:
+        from urllib.parse import urlparse
+
+        host = (urlparse(referrer).hostname or "").lower()
+    except Exception:
+        return "direct"
+    if not host:
+        return "direct"
+    if host.endswith("botspotter.app") or host in ("localhost", "127.0.0.1"):
+        return "internal"
+    host = host[4:] if host.startswith("www.") else host
+    return _SOURCE_ALIASES.get(host, host)[:60]
+
+
 class Enricher:
     def __init__(self, geo: Geo | None = None, classifier: Classifier | None = None):
         self.geo = geo or Geo()
@@ -63,7 +90,7 @@ class Enricher:
             homepage=cls.homepage,
         )
 
-    def portal_visit(self, ip: str, ua: str, cf_country: str, page: str = "/") -> PortalVisit:
+    def portal_visit(self, ip: str, ua: str, cf_country: str, page: str = "/", referrer: str = "") -> PortalVisit:
         """Human visit to the portal. The visitor hash is salted with the UTC
         date so the same person is one unique per day and unlinkable across
         days. The secret prefix stops offline precomputation."""
@@ -75,4 +102,5 @@ class Enricher:
         # It only ever enters a HyperLogLog (irreversible, no per-visitor record).
         stable = hashlib.blake2b(f"{settings.visitor_secret}\x1fall\x1f{ip}\x1f{ua}".encode(), digest_size=12).hexdigest()
         g = self.geo.lookup(ip, cf_country)
-        return PortalVisit(ts=ts, visitor=visitor, vs=stable, country=g.country, page=page[:64] or "/")
+        return PortalVisit(ts=ts, visitor=visitor, vs=stable, country=g.country, page=page[:64] or "/",
+                           ref=referrer_source(referrer))
