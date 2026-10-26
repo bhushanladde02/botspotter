@@ -212,3 +212,24 @@ async def test_sightings_and_category_breakdown(world):
     b = (await ac.get(f"/v1/bots/{slug}")).json()
     assert b["last_country"] == "US" and b["last_site"] == "dev-site"
     assert len(b["recent"]) == 3 and set(b["recent"][0]) == {"ts", "site", "country", "gh"}
+
+
+async def test_store_failure_does_not_crash_or_double_count(world):
+    """A broken durable store must not stop counters or replay batches."""
+    ic, ac, agg, store, counters = world
+
+    async def boom(_):
+        raise RuntimeError("simulated SQL error")
+
+    store.upsert_bots = boom  # type: ignore[assignment]
+    await ic.post("/v1/ingest", json={"events": hits(GPTBOT_UA, BOT_HEADERS, "20.171.207.5", "US", n=3)},
+                  headers={"X-BS-Key": "devkey"})
+    for ip in ("1.1.1.1", "2.2.2.2"):
+        await ic.post("/v1/beacon", json={}, headers={"x-forwarded-for": ip, "user-agent": CHROME_UA})
+    await drain(agg)
+    snap = (await ac.get("/v1/snapshot")).json()
+    assert snap["bots"]["total_hits"] == 3          # counted exactly once
+    assert snap["humans"]["views"] == 2             # visits still processed after the bot-store failure
+    assert agg.store_errors == 1
+    assert int(await counters.r.get("bs:errors:upsert_bots")) == 1
+    assert len(store.events) == 3                   # the other store writes still happened

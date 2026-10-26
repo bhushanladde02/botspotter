@@ -69,10 +69,13 @@ class PostgresStore(Store):
                 rows,
             )
             # Lineage: link to the previous sibling in the same family, if any.
+            # (Correlated subquery in SET — Postgres does not allow referencing the
+            # UPDATE target from a FROM/LATERAL item; that bug crash-looped prod on 2026-10-25.)
             await con.execute(
-                """UPDATE bots b SET evolved_from = prev.fp
-                   FROM LATERAL (SELECT fp FROM bots p WHERE p.fam = b.fam AND p.first_seen < b.first_seen
-                                 ORDER BY p.first_seen DESC LIMIT 1) prev
+                """UPDATE bots b SET evolved_from = (
+                       SELECT p.fp FROM bots p
+                       WHERE p.fam = b.fam AND p.first_seen < b.first_seen AND p.fp <> b.fp
+                       ORDER BY p.first_seen DESC LIMIT 1)
                    WHERE b.evolved_from IS NULL AND b.fp = ANY($1::text[])""",
                 [r[0] for r in rows],
             )

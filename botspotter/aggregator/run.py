@@ -33,6 +33,7 @@ class Aggregator:
         self.counters = counters or Counters.from_url()
         self._stop = asyncio.Event()
         self.processed = 0
+        self.store_errors = 0
 
     async def process(self, messages) -> int:
         bots: list[BotEvent] = []
@@ -44,18 +45,33 @@ class Aggregator:
                 visits.append(PortalVisit.from_bytes(m.value))
         if bots:
             discovered = await self.counters.record_bot_events(bots)
-            await self.store.upsert_bots(bots)
-            await self.store.write_events(bots)
+            await self._store("upsert_bots", self.store.upsert_bots, bots)
+            await self._store("write_events", self.store.write_events, bots)
             if discovered:
-                await self.store.record_discoveries(discovered)
+                await self._store("record_discoveries", self.store.record_discoveries, discovered)
                 for d in discovered:
                     log.info("discovered bot %s (%s) on %s sites", d["name"], d["ua_family"], d["sites"])
         if visits:
             await self.counters.record_visits(visits)
-            await self.store.write_visits(visits)
+            await self._store("write_visits", self.store.write_visits, visits)
         n = len(bots) + len(visits)
         self.processed += n
         return n
+
+    async def _store(self, name: str, fn, payload) -> None:
+        """Durable-store writes must never take the live counters down. A failure
+        is logged, counted in Redis (bs:errors:<name>) and the batch is still
+        committed, so a bad query degrades history instead of crash-looping and
+        double-counting (which is exactly what happened on 2026-10-25)."""
+        try:
+            await fn(payload)
+        except Exception:  # noqa: BLE001 - deliberate: isolate the store
+            log.exception("store.%s failed for %d items", name, len(payload))
+            self.store_errors += 1
+            try:
+                await self.counters.r.incr(f"bs:errors:{name}")
+            except Exception:  # pragma: no cover
+                pass
 
     async def run_once(self, timeout_s: float = 0.5) -> int:
         msgs = await self.stream.poll(

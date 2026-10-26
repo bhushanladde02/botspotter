@@ -79,6 +79,7 @@ Everything after step 3 contains no IP, no raw UA, no path, no cookies. Humans o
 |---|---|---|
 | Redis lost | counters reset | `scripts/rebuild_counters.py` from Postgres |
 | Aggregator crash mid-batch | ≤500 events double-counted in Redis once | rebuild if it matters; Postgres is exact |
+| Postgres write fails (bad SQL, disk full) | history for that batch lost; counters unaffected; `bs:errors:<op>` increments and the log has the traceback | fix, redeploy; replay from Redpanda (7 days) if the gap matters |
 | Redpanda down | ingest returns 500, sensors retry/drop | sensors buffer up to 10k hits in memory |
 | Postgres down | counters keep updating; history gap | Redpanda retains 7 days → replay by resetting the consumer group offset |
 | Ingest overloaded | Cloudflare/Nginx rate-limit 429 | `docker compose up -d --scale ingest=3` |
