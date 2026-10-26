@@ -12,18 +12,24 @@ services:
   ingest:
     command: ["granian", "--interface", "asgi", "--host", "0.0.0.0", "--port", "8001",
               "--workers", "1", "--loop", "uvloop", "botspotter.ingest.app:app"]
+    volumes: ["${DATA_DIR:-/home/ubuntu/botspotter-data}:/data:ro"]
+    environment: { BS_GEOIP_DB: /data/GeoLite2-City.mmdb, BS_GEOIP_ASN_DB: /data/GeoLite2-ASN.mmdb, BS_RUNTIME_DIR: /data }
     networks:
       default: {}
       web: { aliases: [bs-ingest] }
     deploy: { resources: { limits: { memory: 192M } } }
 
   api:
+    volumes: ["${DATA_DIR:-/home/ubuntu/botspotter-data}:/data:ro"]
+    environment: { BS_GEOIP_DB: /data/GeoLite2-City.mmdb, BS_GEOIP_ASN_DB: /data/GeoLite2-ASN.mmdb, BS_RUNTIME_DIR: /data }
     networks:
       default: {}
       web: { aliases: [bs-api] }
     deploy: { resources: { limits: { memory: 192M } } }
 
   aggregator:
+    volumes: ["${DATA_DIR:-/home/ubuntu/botspotter-data}:/data:ro"]
+    environment: { BS_RUNTIME_DIR: /data }
     deploy: { resources: { limits: { memory: 192M } } }
 
   redis:

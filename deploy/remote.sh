@@ -42,6 +42,7 @@ if ! grep -q '^BS_ADMIN_KEY=' .env; then
   echo "BS_ADMIN_KEY=$(openssl rand -hex 24)" >> .env
   echo "generated BS_ADMIN_KEY — copy it from .env into private/notes.md (it opens /admin)"
 fi
+grep -q '^DATA_DIR=' .env || echo "DATA_DIR=$HOME/botspotter-data" >> .env
 if grep -q '^CADDY_NETWORK=' .env; then sed -i "s|^CADDY_NETWORK=.*|CADDY_NETWORK=$NET|" .env; else echo "CADDY_NETWORK=$NET" >> .env; fi
 echo "caddy network: $NET"
 
@@ -59,6 +60,16 @@ rollback() {
   exit "$rc"
 }
 trap rollback EXIT
+
+step "2b/7 runtime data (GeoIP, crawler ranges) + weekly refresh cron"
+chmod +x deploy/refresh-data.sh
+MAXMIND_ACCOUNT_ID="${MAXMIND_ACCOUNT_ID:-}" MAXMIND_LICENSE_KEY="${MAXMIND_LICENSE_KEY:-}" RESTART=0 bash deploy/refresh-data.sh || echo "refresh-data: non-fatal failure"
+# cron needs the secrets too: kept in ~/.botspotter-maxmind (0600), never in the repo
+if [ -n "${MAXMIND_LICENSE_KEY:-}" ]; then
+  printf 'MAXMIND_ACCOUNT_ID=%s\nMAXMIND_LICENSE_KEY=%s\n' "$MAXMIND_ACCOUNT_ID" "$MAXMIND_LICENSE_KEY" > "$HOME/.botspotter-maxmind"; chmod 600 "$HOME/.botspotter-maxmind"
+fi
+REFRESH_LINE="23 7 * * 3 . $HOME/.botspotter-maxmind 2>/dev/null; MAXMIND_ACCOUNT_ID=\$MAXMIND_ACCOUNT_ID MAXMIND_LICENSE_KEY=\$MAXMIND_LICENSE_KEY bash $APP_DIR/deploy/refresh-data.sh >> $HOME/botspotter-backups/refresh.log 2>&1"
+( crontab -l 2>/dev/null | grep -v 'botspotter/deploy/refresh-data.sh'; echo "$REFRESH_LINE" ) | crontab -
 
 step "3/7 build + start"
 $COMPOSE up -d --build --remove-orphans

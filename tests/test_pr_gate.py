@@ -84,3 +84,9 @@ def test_gate_does_not_flag_its_own_patterns():
     assert "approval gate touched" in rules(rep)      # still needs the owner's label
     rep = pr_gate.scan(*diff_for("scripts/pr_gate.py", ["BS_ADMIN_KEY=" + "fedcba9876543210" * 3]))
     assert any(r.startswith("secret") for r in rules(rep))   # secrets still caught
+
+
+def test_env_example_is_allowed_but_env_files_are_not():
+    assert not pr_gate.scan(*diff_for(".env.example", ["BS_ADMIN_KEY="])).blocking
+    for p in (".env", ".env.prod", ".env.local"):
+        assert pr_gate.scan(*diff_for(p, ["x=1"])).blocking, p

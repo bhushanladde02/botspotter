@@ -15,6 +15,9 @@ Key layout (all prefixed ``bs:``)::
   bs:bot:<fp>:sites                 HLL of site ids (how many sites it crawled)
   bs:bot:<fp>:recent                LIST of last 25 sightings {ts,site,country,gh} (newest first)
   bs:sightings                      LIST of last 100 sightings across all bots (live ticker)
+  bs:live                           PUB/SUB channel: one message per sighting with origin + sensor location (/v1/live)
+  bs:impostors / bs:verified        counters of known bots whose IP failed / passed the operator's published ranges
+  bs:impostors:op                   ZSET operator -> impostor hits;  bs:cloud  ZSET hosting label -> hits
   bs:cat:h:<YYYYMMDDHH>             ZSET category -> hits per hour (category sparkline)
   bs:name:<slug>                    fp (exact-name lookup)
   bs:names                          ZSET slug -> 0 (prefix search via ZRANGEBYLEX)
@@ -40,6 +43,7 @@ Key layout (all prefixed ``bs:``)::
 """
 from __future__ import annotations
 
+import asyncio
 import time
 from datetime import datetime, timezone
 
@@ -48,6 +52,7 @@ import redis.asyncio as aioredis
 
 from .config import settings
 from .fingerprint import slugify_name
+from .sensors import SensorSites
 from .models import BotEvent, PortalVisit
 
 FEED_MAX = 200
@@ -56,6 +61,7 @@ DAILY_TTL = 1100 * 86400  # keep daily human/bot aggregates ~3 years (reach evid
 PRESENCE_WINDOW_S = 90   # a heartbeat every 30 s; 3 missed = gone
 RECENT_MAX = 25
 SIGHTINGS_MAX = 100
+LIVE_CHANNEL = "bs:live"  # Redis pub/sub channel for the live map
 
 
 def _day(ts: float) -> str:
@@ -72,8 +78,9 @@ def _week(ts: float) -> str:
 
 
 class Counters:
-    def __init__(self, r: aioredis.Redis):
+    def __init__(self, r: aioredis.Redis, sites: SensorSites | None = None):
         self.r = r
+        self.sites = sites or SensorSites()
 
     @classmethod
     def from_url(cls, url: str | None = None) -> "Counters":
@@ -95,6 +102,7 @@ class Counters:
         unseen = {fp for fp, f in zip(fps, flags) if not f}
 
         p = self.r.pipeline(transaction=False)
+        live: list[bytes] = []
         for e in events:
             ts = e.ts
             d, h = _day(ts), _hour(ts)
@@ -117,8 +125,24 @@ class Counters:
             p.pfadd(f"bs:bot:{e.fp}:sites", e.site)
             p.hset(f"bs:bot:{e.fp}", mapping={"last_seen": ts, "last_country": e.country, "last_site": e.site})
             sighting = orjson.dumps({"ts": ts, "site": e.site, "country": e.country, "gh": e.gh,
-                                     "fp": e.fp, "name": e.name, "category": e.category})
+                                     "fp": e.fp, "name": e.name, "category": e.category,
+                                     "city": e.city, "cloud": e.cloud, "verified": e.verified})
             p.lpush(f"bs:bot:{e.fp}:recent", sighting)
+            # Live map: every sighting is also published for /v1/live (SSE). Fire-and-forget;
+            # nobody listening costs nothing. Includes exact origin + the sensor's location.
+            dst = self.sites.location(e.site)
+            live.append(orjson.dumps({
+                "ts": ts, "name": e.name, "slug": slugify_name(e.name), "fp": e.fp, "operator": e.operator,
+                "category": e.category, "verified": e.verified, "country": e.country, "city": e.city,
+                "cloud": e.cloud, "lat": e.lat, "lon": e.lon, "site": e.site,
+                "dlat": dst["lat"], "dlon": dst["lon"], "dcity": dst["city"]}))
+            if e.verified == "impostor":
+                p.incr("bs:impostors")
+                p.zincrby("bs:impostors:op", 1, e.operator)
+            elif e.verified == "verified":
+                p.incr("bs:verified")
+            if e.cloud:
+                p.zincrby("bs:cloud", 1, e.cloud)
             p.ltrim(f"bs:bot:{e.fp}:recent", 0, RECENT_MAX - 1)
             p.lpush("bs:sightings", sighting)
             p.zincrby(f"bs:cat:h:{h}", 1, e.category)
@@ -149,6 +173,10 @@ class Counters:
             p.expire(f"bs:discover:{e.fp}", settings.discovery_window_s)
         p.ltrim("bs:sightings", 0, SIGHTINGS_MAX - 1)
         await p.execute()
+        # Published outside the pipeline: pub/sub inside MULTI is fine on Redis but
+        # fakeredis drops it, and the tests must see what production sees.
+        if live:
+            await asyncio.gather(*(self.r.publish(LIVE_CHANNEL, m) for m in live))
 
         # Discovery check for anything that is a heuristic (unknown) bot.
         discovered: list[dict] = []
@@ -251,6 +279,13 @@ class Counters:
          views, views_today, uniq_today, uniq_week, uniq_all, feed, feed_len, sightings,
          h_countries, h_sources, h_sources_today, watching) = await p.execute()
 
+        # Trust (impostor verification) and hosting breakdown.
+        p = self.r.pipeline(transaction=False)
+        p.get("bs:impostors"); p.get("bs:verified")
+        p.zrevrange("bs:impostors:op", 0, 9, withscores=True)
+        p.zrevrange("bs:cloud", 0, 11, withscores=True)
+        n_imp, n_ver, imp_ops, clouds = await p.execute()
+
         # Resolve names for the top bots in one round trip.
         p = self.r.pipeline(transaction=False)
         for fp, _ in top:
@@ -335,7 +370,10 @@ class Counters:
                 "watching_now": int(watching),
             },
             "peak": peak,
-            "network": {"sensors": int(n_sensors), "countries": int(n_countries)},
+            "trust": {"verified": int(n_ver or 0), "impostors": int(n_imp or 0),
+                      "impostors_by_operator": [{"operator": c.decode(), "hits": int(n)} for c, n in imp_ops]},
+            "by_cloud": [{"cloud": c.decode(), "hits": int(n)} for c, n in clouds],
+            "network": {"sensors": int(n_sensors), "countries": int(n_countries), "sites": self.sites.public()},
             "feed": feed_items,
             "sightings": [self._with_latlon(orjson.loads(x)) for x in sightings],
         }

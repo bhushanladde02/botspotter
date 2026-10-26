@@ -49,6 +49,10 @@ class BotEvent(BaseModel):
     hit_robots: bool = False
     ua_host: str = ""  # public domain the bot names in its UA (+https://x/bot or x@y) — used for claim verification
     homepage: str = ""  # registry homepage (known bots)
+    city: str = ""      # origin city (GeoLite2-City); "" with country-only geo
+    org: str = ""       # ASN organisation the request came from (public hosting info)
+    cloud: str = ""     # friendly label: AWS / Azure / GCP / OCI / Hetzner / ...
+    verified: str = ""  # "verified" | "impostor" | "" (operator publishes no ranges) — see verify.py
 
     def to_bytes(self) -> bytes:
         return orjson.dumps(self.model_dump())

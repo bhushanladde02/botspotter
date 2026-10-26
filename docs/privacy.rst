@@ -16,7 +16,7 @@ Nothing. The IP is used in-process for (a) the ``/16`` network prefix of *unknow
 What is stored
 --------------
 
-``BotEvent`` (see ``models.py``): timestamps, site id, fingerprint hash, name, UA family, operator/category, country, region, geohash, ``hit_robots``. ``PortalVisit``: the pseudonymous human-visit row described under *Humans on the portal*. In Postgres and Redis. That is all.
+``BotEvent`` (see ``models.py``): timestamps, site id, fingerprint hash, name, UA family, operator/category, country, region, city (with the City database), geohash, ``hit_robots``, the hosting network's ASN organisation and label (public information about where a *bot* is hosted, not about a person), and ``verified`` (whether the IP was inside the operator's published crawler ranges — computed in-process, the IP still discarded). ``PortalVisit``: the pseudonymous human-visit row described under *Humans on the portal*. In Postgres and Redis. That is all.
 
 Humans on the portal
 --------------------

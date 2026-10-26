@@ -247,7 +247,7 @@ async def test_sightings_and_category_breakdown(world):
     slug = snap["bots"]["top"][0]["slug"]
     b = (await ac.get(f"/v1/bots/{slug}")).json()
     assert b["last_country"] == "US" and b["last_site"] == "dev-site"
-    assert len(b["recent"]) == 3 and set(b["recent"][0]) == {"ts", "site", "country", "gh"}
+    assert len(b["recent"]) == 3 and set(b["recent"][0]) == {"ts", "site", "country", "gh", "city", "cloud", "verified"}
 
 
 async def test_store_failure_does_not_crash_or_double_count(world):

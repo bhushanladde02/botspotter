@@ -29,7 +29,7 @@ import time
 
 import orjson
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..config import settings
@@ -281,6 +281,44 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
         _admin(request, key)
         return Response(visits_csv(await _visits(request, days)), media_type="text/csv",
                         headers={"Content-Disposition": "attachment; filename=botspotter-visits.csv", "Cache-Control": "private, no-store"})
+
+    # ---- live map stream ------------------------------------------------------------
+    @app.get("/v1/live")
+    async def live(request: Request):
+        """Server-sent events: one JSON line per bot sighting, within a second of the
+        hit (aggregator -> Redis pub/sub -> here). A comment line every 15 s keeps
+        proxies from timing out. Not cached, not compressed (Caddy config)."""
+        from ..counters import LIVE_CHANNEL
+
+        async def gen():
+            r = request.app.state.counters.r
+            pubsub = r.pubsub()
+            await pubsub.subscribe(LIVE_CHANNEL)
+            yield b"retry: 3000\n\n"
+            try:
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=15.0)
+                    if msg is None:
+                        yield b": keepalive\n\n"
+                        continue
+                    yield b"data: " + msg["data"] + b"\n\n"
+            finally:
+                try:
+                    await pubsub.unsubscribe(LIVE_CHANNEL)
+                    await pubsub.aclose()
+                except Exception:  # pragma: no cover
+                    pass
+
+        return StreamingResponse(gen(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no",
+                                          "Connection": "keep-alive"})
+
+    @app.get("/v1/sites")
+    async def sites(request: Request):
+        """Sensor sites and their (city-level) locations, for the map."""
+        return cached({"sites": request.app.state.counters.sites.public()}, 300)
 
     @app.get("/v1/sensors")
     async def sensors(request: Request, limit: int = Query(20, le=100)):

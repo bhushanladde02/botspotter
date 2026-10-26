@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 11:00
+     - Feature (branch ``feat/live-map``, PR pending): live map — SSE stream ``/v1/live`` of every sighting, canvas arcs from bot origin to sensor site with labels, sensor markers, follow-bot mode, optional sound; GeoLite2 City + ASN on the VM (``deploy/refresh-data.sh``, weekly cron; MaxMind account 1436039, secrets set) → city-level origins and hosting labels; impostor verification against published crawler ranges (``verify.py``, ``jobs/crawler_ranges.py``); sensor locations ``sensors.json``; new cards "Real or impostor?" and "Where bots live"; Caddy: no compression for event streams, ``flush_interval -1``
+     - Bhushan
    * - 2026-10-26 10:30
      - Process: mandatory MR flow documented (docs/cicd.rst "The flow"); ``scripts/mr.sh`` (tests + gate + commit + push + PR); safety gate ``scripts/pr_gate.py`` + ``gate.yml`` as a required check (secrets, destructive ops, salt rotation, gate weakening, RCE, unknown hosts); ``alarm.yml`` opens an owner-assigned incident issue when ``ci``/``deploy`` fail on main, with last-good SHA and a ``rollback.yml`` one-click redeploy (still behind the production approval)
      - Bhushan
