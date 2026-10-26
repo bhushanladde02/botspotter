@@ -104,3 +104,12 @@ Each entry: context → decision → consequences. Add one when a non-obvious ch
 **Decision.** They never did: Redis (AOF), Postgres and Redpanda live in named Docker volumes; ``remote.sh`` only rebuilds app containers and never runs ``down -v`` or ``FLUSHDB``. The one flush on launch night was a manual, one-off cleanup of crash-loop duplicates. Added ``deploy/backup.sh`` (nightly 09:17 UTC via cron, installed by ``remote.sh``): Redis RDB + ``pg_dump``, 7-day retention in ``~/botspotter-backups``.
 
 **Consequences.** Counters are continuous across releases. Restores documented in the script header and :doc:`runbook`.
+
+015 — Avatars are generated, not sourced (2026-10-25)
+------------------------------------------------------
+
+**Context.** Wanted a fun face per bot, with zero legal exposure.
+
+**Decision.** ``botspotter/avatar.py`` draws a robot face as SVG from the fingerprint digest; the name's adjective picks the palette, hash bits pick head/eyes/antenna/mouth/accessory (~440k combinations). Served at ``/avatar/<slug>.svg`` with a one-day immutable cache. No stock photos, no third-party avatar APIs, no AI-generated art.
+
+**Consequences.** Nothing to license or attribute; same bot = same face everywhere; avatars for OG cards later are trivial.

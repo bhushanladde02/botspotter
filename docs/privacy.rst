@@ -52,3 +52,8 @@ Claims
 ------
 
 A verified claim stores a salted hash of the owner key and of the contact email on the bot record, plus the public fields the operator chooses to publish. The plaintext email exists only in the pending claim record (7-day expiry). ``ua_host`` — the domain a bot names in its own User-Agent — is recorded at first sight; it is published operator information, not personal data. See :doc:`claims`.
+
+Presence and the audience report
+--------------------------------
+
+"Watching now" is the number of daily visitor hashes with a heartbeat in the last 90 seconds (``bs:humans:active``; entries older than an hour are dropped). The public ``/stats`` page and ``/v1/stats/humans`` expose only daily aggregates: views, unique humans (HyperLogLog), bot hits, top countries and referrer domains. Daily aggregates are retained for about three years so reach can be demonstrated over time; no per-visitor data is retained.

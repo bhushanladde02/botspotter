@@ -51,6 +51,8 @@ from .models import BotEvent, PortalVisit
 
 FEED_MAX = 200
 TOP_N = 25
+DAILY_TTL = 1100 * 86400  # keep daily human/bot aggregates ~3 years (reach evidence)
+PRESENCE_WINDOW_S = 90   # a heartbeat every 30 s; 3 missed = gone
 RECENT_MAX = 25
 SIGHTINGS_MAX = 100
 
@@ -97,7 +99,7 @@ class Counters:
             d, h = _day(ts), _hour(ts)
             p.incr("bs:total")
             p.incr(f"bs:total:d:{d}")
-            p.expire(f"bs:total:d:{d}", 400 * 86400)
+            p.expire(f"bs:total:d:{d}", DAILY_TTL)
             p.incr(f"bs:total:h:{h}")
             p.expire(f"bs:total:h:{h}", 14 * 86400)
             p.zincrby("bs:bots", 1, e.fp)
@@ -191,13 +193,20 @@ class Counters:
         p = self.r.pipeline(transaction=False)
         for v in visits:
             d, w = _day(v.ts), _week(v.ts)
+            if v.page == "__heartbeat__":
+                # presence only: who is on the page right now
+                p.zadd("bs:humans:active", {v.visitor: v.ts})
+                continue
+            p.zadd("bs:humans:active", {v.visitor: v.ts})
             p.incr("bs:humans:views")
             p.incr(f"bs:humans:views:d:{d}")
-            p.expire(f"bs:humans:views:d:{d}", 400 * 86400)
+            p.expire(f"bs:humans:views:d:{d}", DAILY_TTL)
             p.pfadd(f"bs:humans:hll:d:{d}", v.visitor)
-            p.expire(f"bs:humans:hll:d:{d}", 400 * 86400)
+            p.expire(f"bs:humans:hll:d:{d}", DAILY_TTL)
             p.pfadd(f"bs:humans:hll:w:{w}", v.visitor)
-            p.expire(f"bs:humans:hll:w:{w}", 400 * 86400)
+            p.expire(f"bs:humans:hll:w:{w}", DAILY_TTL)
+            p.zincrby(f"bs:humans:country:d:{d}", 1, v.country)
+            p.expire(f"bs:humans:country:d:{d}", DAILY_TTL)
             p.pfadd("bs:humans:hll:all", v.vs or v.visitor)
             p.pfadd(f"bs:humans:hll:h:{_hour(v.ts)}", v.visitor)
             p.expire(f"bs:humans:hll:h:{_hour(v.ts)}", 14 * 86400)
@@ -205,7 +214,8 @@ class Counters:
             if v.ref and v.ref != "internal":
                 p.zincrby("bs:humans:source", 1, v.ref)
                 p.zincrby(f"bs:humans:source:d:{d}", 1, v.ref)
-                p.expire(f"bs:humans:source:d:{d}", 400 * 86400)
+                p.expire(f"bs:humans:source:d:{d}", DAILY_TTL)
+        p.zremrangebyscore("bs:humans:active", 0, time.time() - 3600)
         await p.execute()
 
     # -------------------------------------------------------------- snapshot
@@ -234,9 +244,10 @@ class Counters:
         p.zrevrange("bs:humans:country", 0, 7, withscores=True)
         p.zrevrange("bs:humans:source", 0, 7, withscores=True)
         p.zrevrange(f"bs:humans:source:d:{d}", 0, 7, withscores=True)
+        p.zcount("bs:humans:active", ts - PRESENCE_WINDOW_S, "+inf")
         (total, today, hour, n_bots, top, countries, cats, ops, n_sensors, n_countries,
          views, views_today, uniq_today, uniq_week, uniq_all, feed, feed_len, sightings,
-         h_countries, h_sources, h_sources_today) = await p.execute()
+         h_countries, h_sources, h_sources_today, watching) = await p.execute()
 
         # Resolve names for the top bots in one round trip.
         p = self.r.pipeline(transaction=False)
@@ -313,6 +324,7 @@ class Counters:
                 "by_country": [{"country": c.decode(), "views": int(n)} for c, n in h_countries],
                 "by_source": [{"source": c.decode(), "views": int(n)} for c, n in h_sources],
                 "by_source_today": [{"source": c.decode(), "views": int(n)} for c, n in h_sources_today],
+                "watching_now": int(watching),
             },
             "peak": peak,
             "network": {"sensors": int(n_sensors), "countries": int(n_countries)},
@@ -429,6 +441,48 @@ class Counters:
             out.append({"name": name, "slug": slug, "operator": op, "category": cat, "hits": int(res[i + 1] or 0),
                         "display_name": dname or None, "claimed": bool(claimed)})
         return out
+
+    async def human_report(self, days: int = 90) -> dict:
+        """Daily audience report (humans + bot hits) for the last N UTC days.
+        Built from the daily aggregates, which are kept ~3 years."""
+        now = time.time()
+        day0 = int(now // 86400) * 86400
+        days_list = [day0 - i * 86400 for i in range(days - 1, -1, -1)]
+        p = self.r.pipeline(transaction=False)
+        for d0 in days_list:
+            d = _day(d0)
+            p.get(f"bs:humans:views:d:{d}")
+            p.pfcount(f"bs:humans:hll:d:{d}")
+            p.get(f"bs:total:d:{d}")
+            p.zrevrange(f"bs:humans:country:d:{d}", 0, 4, withscores=True)
+            p.zrevrange(f"bs:humans:source:d:{d}", 0, 4, withscores=True)
+        res = await p.execute()
+        rows = []
+        for i, d0 in enumerate(days_list):
+            v, u, b, cc, src = res[i * 5: i * 5 + 5]
+            rows.append({
+                "date": datetime.fromtimestamp(d0, tz=timezone.utc).strftime("%Y-%m-%d"),
+                "views": int(v or 0), "unique_humans": int(u), "bot_hits": int(b or 0),
+                "top_countries": [[c.decode(), int(n)] for c, n in cc],
+                "top_sources": [[c.decode(), int(n)] for c, n in src],
+            })
+        p = self.r.pipeline(transaction=False)
+        p.pfcount("bs:humans:hll:all"); p.get("bs:humans:views"); p.zcard("bs:humans:country")
+        p.zrevrange("bs:humans:country", 0, 19, withscores=True); p.zrevrange("bs:humans:source", 0, 19, withscores=True)
+        uniq_all, views_all, n_countries, countries, sources = await p.execute()
+        active_days = [r for r in rows if r["views"]]
+        return {
+            "generated_at": now, "days": days,
+            "totals": {"unique_humans_all_time": int(uniq_all), "views_all_time": int(views_all or 0),
+                       "countries_all_time": int(n_countries),
+                       "unique_humans_in_window": sum(r["unique_humans"] for r in rows),
+                       "views_in_window": sum(r["views"] for r in rows),
+                       "peak_day": max(rows, key=lambda r: r["unique_humans"])["date"] if active_days else None,
+                       "peak_day_unique_humans": max(r["unique_humans"] for r in rows) if rows else 0},
+            "by_country": [{"country": c.decode(), "views": int(n)} for c, n in countries],
+            "by_source": [{"source": c.decode(), "views": int(n)} for c, n in sources],
+            "daily": rows,
+        }
 
     async def sightings(self, limit: int = 100) -> list[dict]:
         rows = await self.r.lrange("bs:sightings", 0, limit - 1)

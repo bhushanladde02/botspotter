@@ -72,10 +72,15 @@ Read API (public, Redis-only, cache headers on everything)
 
 Every request to the API service also passes through the **self-sensor** middleware: bots that visit the portal are counted under site ``botspotter-portal``.
 
+Audience report
+---------------
+
+``GET /v1/stats/humans?days=N`` (JSON) and ``GET /v1/stats/humans.csv`` — daily unique humans, views, bot hits, top countries and referrer sources for the last N UTC days (up to 1100), plus all-time totals and the peak day. Public and cacheable (5 min). ``snapshot.humans.watching_now`` = distinct humans whose heartbeat arrived in the last 90 s (the page sends one every 30 s while visible).
+
 Discoverability
 ---------------
 
-``GET /robots.txt`` (welcomes all bots), ``GET /sitemap.xml``, ``GET /feed.xml`` (RSS of discovered bots), ``GET /badge/{site}.svg`` (live sensor badge), ``GET /static/og.svg`` (social card).
+``GET /robots.txt`` (welcomes all bots), ``GET /sitemap.xml``, ``GET /feed.xml`` (RSS of discovered bots), ``GET /badge/{site}.svg`` (live sensor badge), ``GET /avatar/{slug}.svg?size=`` (deterministic robot avatar), ``GET /static/og.svg`` (social card).
 
 Claims (see :doc:`claims`)
 --------------------------

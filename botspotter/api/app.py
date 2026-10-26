@@ -30,6 +30,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from ..config import settings
+from ..avatar import avatar_svg
 from ..claims import Claims
 from ..counters import Counters
 from ..enrich import Enricher
@@ -200,6 +201,15 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
                f'{body}</channel></rss>')
         return Response(xml, media_type="application/rss+xml", headers={"Cache-Control": "public, max-age=300"})
 
+    @app.get("/avatar/{slug}.svg")
+    async def avatar(request: Request, slug: str, size: int = Query(160, ge=24, le=512)):
+        """Deterministic robot avatar for a bot (drawn from its fingerprint; no third-party images)."""
+        b = await request.app.state.counters.bot_by_slug(slug.lower())
+        if b is None:
+            raise HTTPException(404, "no bot by that name")
+        return Response(avatar_svg(b["fp"], b["name"], size), media_type="image/svg+xml",
+                        headers={"Cache-Control": "public, max-age=86400, immutable"})
+
     @app.get("/badge/{site}.svg")
     async def badge(request: Request, site: str):
         """Live shields-style badge for a sensor site: 'AI bots spotted here · 1,234'."""
@@ -217,6 +227,21 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
                f'<text x="{lw+7}" y="14" fill="#07090f" font-weight="bold">{x(right)}</text></g></svg>')
         return Response(svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=300"})
 
+    @app.get("/v1/stats/humans")
+    async def stats_humans(request: Request, days: int = Query(90, ge=1, le=1100)):
+        """Audience report: daily uniques, views, bot hits, countries, sources. Public, cacheable."""
+        return cached(await request.app.state.counters.human_report(days), 300)
+
+    @app.get("/v1/stats/humans.csv")
+    async def stats_humans_csv(request: Request, days: int = Query(365, ge=1, le=1100)):
+        rep = await request.app.state.counters.human_report(days)
+        lines = ["date,views,unique_humans,bot_hits,top_countries,top_sources"]
+        for r in rep["daily"]:
+            cc = " ".join(f"{c}:{n}" for c, n in r["top_countries"]); src = " ".join(f"{c}:{n}" for c, n in r["top_sources"])
+            lines.append(f'{r["date"]},{r["views"]},{r["unique_humans"]},{r["bot_hits"]},"{cc}","{src}"')
+        return Response("\n".join(lines) + "\n", media_type="text/csv",
+                        headers={"Content-Disposition": "attachment; filename=botspotter-audience.csv", "Cache-Control": "public, max-age=300"})
+
     @app.get("/v1/sensors")
     async def sensors(request: Request, limit: int = Query(20, le=100)):
         return cached({"sensors": await request.app.state.counters.top_sensors(limit)}, 30)
@@ -230,6 +255,7 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
         @app.get("/sensors")
         @app.get("/terms")
         @app.get("/claim")
+        @app.get("/stats")
         async def static_page():
             return FileResponse(WEB_DIR / "index.html", headers={"Cache-Control": "public, max-age=60"})
 

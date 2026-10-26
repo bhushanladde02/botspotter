@@ -73,6 +73,9 @@
   canvas.spark{width:100%;height:46px;display:block}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
   .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:560px;width:100%;padding:22px;position:relative}
+  .av{width:28px;height:28px;border-radius:7px;vertical-align:middle;margin-right:8px;flex:none}
+  .av-big{width:96px;height:96px;border-radius:20px;float:right;margin:0 0 10px 14px;box-shadow:0 0 0 1px var(--line),0 10px 30px -10px rgba(198,255,77,.4)}
+  .row .n{display:inline-flex;align-items:center}
   .modal h2{font-family:var(--mono);margin:0 0 4px;color:var(--acid);letter-spacing:-1px}
   .modal .close{position:absolute;right:14px;top:10px;background:none;border:0;color:var(--muted);font-size:22px;cursor:pointer}
   .kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;font-size:13px;margin-top:12px}
@@ -112,7 +115,7 @@
   .about label.chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--muted)}
   .about button{background:var(--acid);color:#07090f;border:0;font-weight:700;padding:11px 16px;border-radius:10px;cursor:pointer;font-size:14px}
   .about button:disabled{opacity:.4;cursor:not-allowed}
-  body.about-mode .hero,body.about-mode .tiles,body.about-mode .cats,body.about-mode .ticker,body.about-mode #map,body.about-mode .grid{display:none}
+  body.about-mode .hero,body.about-mode .tiles:not(.st),body.about-mode .cats,body.about-mode .ticker,body.about-mode #map,body.about-mode .grid{display:none}
   
   footer{text-align:center;color:var(--muted);font-size:12px;padding:20px;border-top:1px solid var(--line)}
   .maplibregl-popup-content{background:var(--panel);color:var(--text);font-family:var(--mono);font-size:12px;border:1px solid var(--line)}
@@ -122,8 +125,8 @@
 <body>
 <header>
   <div class="logo">Bot<span>Spotter</span> <span style="font-weight:400;color:var(--muted);font-size:12px">beta</span></div>
-  <div class="live"><span class="dot"></span><span id="status">connecting…</span></div>
-  <nav class="nav"><a href="/" id="nav_live" onclick="return go('/')">Live</a><a href="/about" id="nav_about" onclick="return go('/about')">What is this?</a><a href="/sensors" id="nav_sensors" onclick="return go('/sensors')">Add your site</a><a href="/claim" id="nav_claim" onclick="return go('/claim')">Claim your bot</a></nav>
+  <div class="live"><span class="dot"></span><span id="status">connecting…</span><span id="watching" style="margin-left:10px;color:var(--pink)"></span></div>
+  <nav class="nav"><a href="/" id="nav_live" onclick="return go('/')">Live</a><a href="/about" id="nav_about" onclick="return go('/about')">What is this?</a><a href="/sensors" id="nav_sensors" onclick="return go('/sensors')">Add your site</a><a href="/claim" id="nav_claim" onclick="return go('/claim')">Claim your bot</a><a href="/stats" id="nav_stats" onclick="return go('/stats')">Audience</a></nav>
   <div class="search">
     <input id="q" placeholder="search a bot name… e.g. copper heron" autocomplete="off">
     <div class="results" id="results"></div>
@@ -183,6 +186,9 @@
     <li><strong>If you're curious:</strong> watch the AI economy happen in real time. Which countries are crawled most? Whose bots are busiest? What showed up this week that didn't exist last week?</li>
     <li><strong>If you write or research:</strong> a public, live, citable source on AI crawler activity that isn't owned by a single cloud provider.</li>
   </ul>
+
+  <h2>Why do the bots have faces?</h2>
+  <p>Every bot gets a robot avatar drawn from its fingerprint &mdash; the colour comes from its name (a <em>Copper</em> anything is copper), the face from the hash. No stock images, no AI art, nothing licensed from anyone: it's a few hundred lines of SVG, so the same bot has the same face forever, everywhere.</p>
 
   <h2>Run a bot? Claim it</h2>
   <p>Operators can <a href="/claim" onclick="return go('/claim')">claim their bot</a>: prove control (make the bot fetch a one-time URL, or publish a token on its homepage), then give it a proper name, description and category. Claimed bots carry a ✓ and the generated name stays as an alias.</p>
@@ -345,6 +351,27 @@ BOTSPOTTER_KEY = "YOUR_KEY"</pre>
   <p class="note">Abuse, impersonation or misleading names get the claim revoked (<a href="/terms" onclick="return go('/terms')">Terms §12</a>). To dispute a claim, email <a href="mailto:hello@botspotter.app">hello@botspotter.app</a>.</p>
 </section>
 
+<section class="about" id="page-stats">
+  <h1>Audience</h1>
+  <p>Who is watching BotSpotter: real humans, counted without cookies (see <a href="/terms" onclick="return go('/terms')">privacy</a>). Public, so the numbers can be checked by anyone; <a href="/v1/stats/humans.csv">download as CSV</a> · <a href="/v1/stats/humans?days=365">JSON</a>.</p>
+  <div class="tiles st" style="padding:0;max-width:none;margin:14px 0">
+    <div class="tile humans"><b id="st_uniq_all">—</b><small>unique humans · all time</small></div>
+    <div class="tile humans"><b id="st_views_all">—</b><small>page views · all time</small></div>
+    <div class="tile humans"><b id="st_countries">—</b><small>countries reached</small></div>
+    <div class="tile humans"><b id="st_peak">—</b><small id="st_peak_l">peak day</small></div>
+    <div class="tile humans"><b id="st_watch">—</b><small>watching right now</small></div>
+  </div>
+  <h2>Daily unique humans · last 90 days</h2>
+  <canvas class="spark" id="st_spark" style="height:90px"></canvas>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px">
+    <div><h2 style="margin-top:0">Countries</h2><div id="st_cc"></div></div>
+    <div><h2 style="margin-top:0">Referring sites</h2><div id="st_src"></div></div>
+  </div>
+  <h2>Day by day</h2>
+  <div class="recent" style="max-height:360px" id="st_table"></div>
+  <p class="note" style="margin-top:16px">Method: a visitor is one unique per UTC day (salted hash of IP + browser, HyperLogLog ±1%); "all time" uses a date-free hash so returning visitors count once. Bots are excluded by User-Agent/header heuristics and never count as humans. Daily aggregates are retained three years.</p>
+</section>
+
 <div class="modal" id="modal"><div class="box">
   <button class="close" onclick="closeModal()">×</button>
   <h2 id="m_name">—</h2>
@@ -419,7 +446,7 @@ function spark(canvas, data, color){
 
 // ---------- lists
 function rows(el, items, render){ el.innerHTML = items.length ? items.map(render).join('') : '<div class="row m">nothing yet — bots are shy</div>'; }
-const botRow = b => `<div class="row" onclick="openBot('${esc(b.slug)}')" style="cursor:pointer"><span><span class="n">${esc(b.display_name||b.name)}${b.claimed?' <span title="claimed by operator" style="color:var(--acid)">✓</span>':''}</span><span class="tag ${esc(b.category)}">${esc(b.operator==='unknown'?'unknown':b.operator)}</span></span><span class="h">${fmt(b.hits)}</span></div>`;
+const botRow = b => `<div class="row" onclick="openBot('${esc(b.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(b.slug)}.svg?size=56" alt="" loading="lazy">${esc(b.display_name||b.name)}${b.claimed?' <span title="claimed by operator" style="color:var(--acid)">✓</span>':''}</span><span class="tag ${esc(b.category)}">${esc(b.operator==='unknown'?'unknown':b.operator)}</span></span><span class="h">${fmt(b.hits)}</span></div>`;
 
 // ---------- snapshot polling (CDN-cached, 2s)
 let lastSnap = null;
@@ -428,6 +455,7 @@ async function refresh(){
     const s = await (await fetch(API+'/v1/snapshot',{cache:'no-store'})).json();
     lastSnap = s; paint(s);
     $('status').textContent = 'live · ' + new Date(s.ts*1000).toLocaleTimeString();
+    const w = s.humans.watching_now||0; $('watching').textContent = w ? `· ${fmt(w)} ${w===1?'human':'humans'} watching now` : '';
   }catch(e){ $('status').textContent = 'reconnecting…'; }
 }
 function paint(s){
@@ -442,7 +470,7 @@ function paint(s){
     renderCats(s.bots.by_category); renderTicker(s.sightings || []);
     const top = catFilter ? s.bots.top.filter(b=>b.category===catFilter) : s.bots.top;
     rows($('top'), top.slice(0,10), botRow);
-    rows($('feed'), s.feed.slice(0,10), f => `<div class="row" onclick="openBot('${esc(f.slug)}')" style="cursor:pointer"><span><span class="n">${esc(f.name)}</span><div class="m">${esc(f.ua_family)} · ${f.sites} site${f.sites>1?'s':''} · ${esc(f.country)}</div></span><span class="m">${new Date(f.ts*1000).toLocaleTimeString()}</span></div>`);
+    rows($('feed'), s.feed.slice(0,10), f => `<div class="row" onclick="openBot('${esc(f.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(f.slug)}.svg?size=56" alt="" loading="lazy">${esc(f.name)}</span><div class="m">${esc(f.ua_family)} · ${f.sites} site${f.sites>1?'s':''} · ${esc(f.country)}</div></span><span class="m">${new Date(f.ts*1000).toLocaleTimeString()}</span></div>`);
     rows($('countries'), s.bots.by_country.slice(0,10), c => `<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h">${fmt(c.hits)}</span></div>`);
     rows($('ops'), s.bots.by_operator.slice(0,10), o => `<div class="row"><span class="n">${esc(o.operator)}</span><span class="h">${fmt(o.hits)}</span></div>`);
     rows($('h_countries'), (s.humans.by_country||[]).slice(0,8), c => `<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h" style="color:var(--pink)">${fmt(c.views)}</span></div>`);
@@ -498,12 +526,14 @@ map.on('load',()=>{
 
 // ---------- search + bot profile
 let timer;
-$('q').addEventListener('input', e => { clearTimeout(timer); const q=e.target.value.trim(); if(!q){$('results').style.display='none';return;} timer=setTimeout(async()=>{ const r=await (await fetch(API+'/v1/search?q='+encodeURIComponent(q))).json(); const el=$('results'); el.innerHTML = r.results.length? r.results.map(b=>`<div onclick="openBot('${esc(b.slug)}')">${esc(b.display_name||b.name)}${b.display_name?` <span class="m">(${esc(b.name)})</span>`:''} <span class="m">· ${esc(b.operator)} · ${fmt(b.hits)} hits</span></div>`).join('') : '<div class="m">no bot by that name — yet</div>'; el.style.display='block'; },180); });
+$('q').addEventListener('input', e => { clearTimeout(timer); const q=e.target.value.trim(); if(!q){$('results').style.display='none';return;} timer=setTimeout(async()=>{ const r=await (await fetch(API+'/v1/search?q='+encodeURIComponent(q))).json(); const el=$('results'); el.innerHTML = r.results.length? r.results.map(b=>`<div onclick="openBot('${esc(b.slug)}')" style="display:flex;align-items:center"><img class="av" src="${API}/avatar/${esc(b.slug)}.svg?size=48" alt="">${esc(b.display_name||b.name)}${b.display_name?` <span class="m">(${esc(b.name)})</span>`:''} <span class="m">· ${esc(b.operator)} · ${fmt(b.hits)} hits</span></div>`).join('') : '<div class="m">no bot by that name — yet</div>'; el.style.display='block'; },180); });
 document.addEventListener('click', e => { if(!e.target.closest('.search')) $('results').style.display='none'; });
 let currentSlug = '';
 async function openBot(slug){
   const r = await fetch(API+'/v1/bots/'+slug); if(!r.ok) return; const b = await r.json(); currentSlug = slug;
   $('m_name').textContent = b.display_name || b.name;
+  let av = document.getElementById('m_av'); if(!av){ av = document.createElement('img'); av.id='m_av'; av.className='av-big'; av.alt=''; document.querySelector('#modal .box').insertBefore(av, $('m_name')); }
+  av.src = API + '/avatar/' + encodeURIComponent(slug) + '.svg?size=192';
   $('m_sub').innerHTML = `${b.display_name?`aka <span class="ex">${esc(b.name)}</span> · `:''}${esc(b.operator)} · <span class="tag ${esc(b.category)}">${esc(b.category)}</span> · ${b.claimed?'<span class="tag" style="color:var(--acid)">✓ claimed by operator</span>':(b.kind==='known'?'publicly known crawler':'unidentified automation')}${b.description?`<div style="margin-top:8px;color:var(--text)">${esc(b.description)}</div>`:''}${b.homepage?`<div style="margin-top:4px"><a href="${esc(b.homepage)}" target="_blank" rel="noopener nofollow">${esc(b.homepage)}</a></div>`:''}`;
   const first = new Date(b.first_seen*1000), last = new Date(b.last_seen*1000);
   $('m_kv').innerHTML = [
@@ -521,10 +551,11 @@ function shareX(){ const t = encodeURIComponent(`I just found ${$('m_name').text
 $('modal').addEventListener('click', e => { if(e.target.id==='modal') closeModal(); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
 function go(path){ history.pushState(null,'',path); route(); window.scrollTo(0,0); return false; }
-const PAGES = {'/about':'page-about','/sensors':'page-sensors','/terms':'page-terms','/claim':'page-claim'};
+const PAGES = {'/about':'page-about','/sensors':'page-sensors','/terms':'page-terms','/claim':'page-claim','/stats':'page-stats'};
 function route(){ const page = PAGES[location.pathname] || null; document.body.classList.toggle('about-mode', !!page);
   for (const id of Object.values(PAGES)) $(id).style.display = page===id ? 'block' : 'none';
-  $('nav_about').classList.toggle('on', page==='page-about'); $('nav_sensors').classList.toggle('on', page==='page-sensors'||page==='page-terms'); $('nav_claim').classList.toggle('on', page==='page-claim'); $('nav_live').classList.toggle('on', !page);
+  $('nav_about').classList.toggle('on', page==='page-about'); $('nav_sensors').classList.toggle('on', page==='page-sensors'||page==='page-terms'); $('nav_claim').classList.toggle('on', page==='page-claim'); $('nav_stats').classList.toggle('on', page==='page-stats'); $('nav_live').classList.toggle('on', !page);
+  if (page==='page-stats') loadStats();
   if (page==='page-claim') { const q = new URLSearchParams(location.search).get('slug'); if (q) $('claim_slug').value = q; }
   if (!page && map) setTimeout(()=>map.resize(), 50); }
 // ---------- claim your bot
@@ -551,6 +582,17 @@ async function saveBot(e){ e.preventDefault(); const f = new FormData(e.target);
   const r = await fetch(API+'/v1/bots/'+claimSlug, {method:'PATCH', headers:{'content-type':'application/json','X-BS-Owner': ownerKey}, body: JSON.stringify(body)});
   const j = await r.json(); const m = $('savemsg'); m.style.display='block'; m.textContent = r.ok ? `saved (${(j.updated||[]).join(', ')||'no changes'})` : (j.error || j.detail || 'error'); if (r.ok) refresh(); return false; }
 
+async function loadStats(){ try{
+  const r = await (await fetch(API+'/v1/stats/humans?days=90')).json(); const t = r.totals;
+  $('st_uniq_all').textContent = fmt(t.unique_humans_all_time); $('st_views_all').textContent = fmt(t.views_all_time); $('st_countries').textContent = fmt(t.countries_all_time);
+  $('st_peak').textContent = fmt(t.peak_day_unique_humans); $('st_peak_l').textContent = 'peak day · ' + (t.peak_day || '—');
+  const snap = lastSnap || (await (await fetch(API+'/v1/snapshot')).json()); $('st_watch').textContent = fmt(snap.humans.watching_now||0);
+  spark($('st_spark'), r.daily.map(d=>d.unique_humans), '#ff4dd2');
+  rows($('st_cc'), r.by_country.slice(0,12), c=>`<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h" style="color:var(--pink)">${fmt(c.views)}</span></div>`);
+  rows($('st_src'), r.by_source.slice(0,12), c=>`<div class="row"><span class="n">${esc(c.source)}</span><span class="h" style="color:var(--cyan)">${fmt(c.views)}</span></div>`);
+  $('st_table').innerHTML = r.daily.slice().reverse().filter(d=>d.views).map(d=>`<div class="row"><span class="n">${d.date}</span><span class="m">${fmt(d.unique_humans)} humans · ${fmt(d.views)} views · ${fmt(d.bot_hits)} bot hits · ${d.top_countries.map(([c,n])=>flag(c)+' '+n).join(' ')}</span></div>`).join('') || '<div class="row m">no days yet</div>';
+}catch(e){ console.error('stats', e); } }
+
 function requestKey(e){ e.preventDefault(); const f = new FormData(e.target); const body = `Site: ${f.get('site')}\nEmail: ${f.get('email')}\nStack: ${f.get('stack')||'-'}\n\nI own/administer this site and accept the Sensor Terms.`;
   location.href = 'mailto:hello@botspotter.app?subject=' + encodeURIComponent('BotSpotter sensor key: ' + f.get('site')) + '&body=' + encodeURIComponent(body);
   const m = $('keymsg'); m.style.display='block'; m.textContent = 'Opening your email client — send that message and we will reply with your key. If nothing opened, email hello@botspotter.app with your site name.'; return false; }
@@ -560,6 +602,7 @@ if (location.pathname.startsWith('/bot/')) openBot(location.pathname.slice(5));
 // ---------- human beacon (no cookies, no ids: server hashes ip+ua+day)
 fetch((window.BS_INGEST || API) + '/v1/beacon', {method:'POST', body: JSON.stringify({page: location.pathname, ref: document.referrer || ''}), headers:{'content-type':'application/json'}, keepalive:true}).catch(()=>{});
 
+setInterval(()=>{ if(document.visibilityState==='visible') fetch((window.BS_INGEST || API) + '/v1/beacon', {method:'POST', body: JSON.stringify({page:'__heartbeat__'}), headers:{'content-type':'application/json'}, keepalive:true}).catch(()=>{}); }, 30000);
 refresh(); refreshSensors(); setInterval(refresh, 2000); setInterval(refreshSensors, 30000); setInterval(()=>refreshMap(true), 10000);
 </script>
 </body>

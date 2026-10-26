@@ -10,6 +10,12 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-25 22:00
+     - Feature: live "humans watching now" (30 s heartbeat, 90 s window) in the header; public Audience page ``/stats`` + ``/v1/stats/humans`` JSON/CSV (daily uniques, views, countries, sources; 3-year retention of daily aggregates)
+     - Bhushan
+   * - 2026-10-25 21:55
+     - Feature: procedural robot avatars per bot (``/avatar/<slug>.svg``), shown in lists, search and bot cards
+     - Bhushan
    * - 2026-10-25 21:50
      - Visibility: SEO/OG meta + JSON-LD, ``robots.txt``, ``sitemap.xml``, ``feed.xml`` (RSS), live sensor badge ``/badge/<site>.svg``, OG image; layout now uses full width on wide screens
      - Bhushan

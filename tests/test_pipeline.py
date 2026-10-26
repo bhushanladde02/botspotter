@@ -281,3 +281,21 @@ async def test_discoverability_endpoints(world):
     r = await ac.get("/badge/dev-site.svg"); assert r.status_code == 200 and "<svg" in r.text and ">2<" in r.text
     r = await ac.get("/badge/nobody.svg"); assert r.status_code == 200 and ">0<" in r.text
     r = await ac.get("/static/og.svg"); assert r.status_code == 200
+
+
+async def test_watching_now_and_audience_report(world):
+    ic, ac, agg, store, counters = world
+    for ip in ("1.1.1.1", "2.2.2.2", "3.3.3.3"):
+        await ic.post("/v1/beacon", json={"page": "/", "ref": "https://x.com/a"}, headers={"x-forwarded-for": ip, "user-agent": CHROME_UA, "cf-ipcountry": "US"})
+    await ic.post("/v1/beacon", json={"page": "__heartbeat__"}, headers={"x-forwarded-for": "1.1.1.1", "user-agent": CHROME_UA})
+    await drain(agg)
+    snap = (await ac.get("/v1/snapshot")).json()
+    assert snap["humans"]["watching_now"] == 3 and snap["humans"]["views"] == 3  # heartbeat is presence only, not a view
+    assert len(store.visits) == 4
+    rep = (await ac.get("/v1/stats/humans", params={"days": 7})).json()
+    assert len(rep["daily"]) == 7 and rep["daily"][-1]["unique_humans"] == 3 and rep["daily"][-1]["views"] == 3
+    assert rep["totals"]["unique_humans_all_time"] == 3 and rep["totals"]["peak_day"] == rep["daily"][-1]["date"]
+    assert rep["daily"][-1]["top_countries"] == [["US", 3]] and rep["daily"][-1]["top_sources"] == [["x.com", 3]]
+    csv = (await ac.get("/v1/stats/humans.csv", params={"days": 3})).text.splitlines()
+    assert csv[0].startswith("date,views,unique_humans") and len(csv) == 4 and csv[-1].split(",")[1:4] == ["3", "3", "0"]
+    assert (await ac.get("/stats")).status_code == 200

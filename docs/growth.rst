@@ -65,6 +65,11 @@ To do, by payoff:
 5. Weekly "state of the crawl" post generated from the data (top bots, new discoveries) — recurring content is what search engines reward.
 6. OG image per bot (``/bot/<slug>`` cards unfurl with the name + stats) once there's a PNG renderer.
 
+Evidence of reach (keep for the record)
+---------------------------------------
+
+The ``/stats`` page is the public, verifiable record of audience. For a durable paper trail: download ``/v1/stats/humans.csv?days=1100`` monthly into ``private/evidence/`` (gitignored), alongside screenshots of ``/stats``, press mentions, the GitHub star count and Cloudflare's own analytics export. Independent third-party numbers (Cloudflare Analytics, Search Console) corroborate the self-reported ones.
+
 Batch jobs → Airflow
 --------------------
 
