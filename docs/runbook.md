@@ -1,5 +1,9 @@
 # Runbook
 
+> **Credentials and account details are not in this repo.** They live in `private/notes.md` on
+> Bhushan's Mac (gitignored, guarded by `.github/workflows/guard.yml` and the pre-commit hook from
+> `scripts/install-hooks.sh`). This runbook says *how*; that file says *with what*.
+
 Keep this current: every setting, procedure or credential location changes
 here in the same commit as the change itself.
 
@@ -38,12 +42,13 @@ Schema is applied automatically from `db/schema.sql` on first Postgres start. To
 VM `ubuntu@129.213.153.181` (A1, 1 OCPU / 6 GB, aarch64), key `~/.ssh/sharpen_vm`. Sharpen's Compose
 project (`deploy-*` containers) owns :80/:443 via Caddy; BotSpotter runs as a second site behind it.
 ```bash
-deploy/oracle.sh          # from your Mac; idempotent — rerun for every upgrade
+deploy/oracle.sh          # from your Mac; CI does the same on every push to main (docs/cicd.md)
 ```
 What it does: clone/pull `main` into `~/botspotter` on the VM → generate `.env` on first run (secrets,
 sensor keys, `CADDY_NETWORK`) → `docker compose -f docker-compose.yml -f docker-compose.vm.yml up -d --build`
-→ wait for `/healthz` → copy `deploy/Caddyfile.botspotter` next to Sharpen's Caddyfile, append one
-`import` line (Caddyfile backed up first), validate, reload Caddy → print the sensor keys.
+→ wait for `/healthz` → install `deploy/Caddyfile.botspotter` as `caddy-extra/botspotter.caddy` (Sharpen's
+Caddyfile already imports `extra/*`; if not, one import line is appended after a backup), validate, reload
+Caddy only when changed → **smoke test** a beacon through the whole pipeline → print the sensor keys.
 Cloudflare: DNS `A @ → 129.213.153.181` proxied, `CNAME www → botspotter.app` proxied; SSL mode **Full**
 until Caddy has its certificate, then **Full (strict)**. Rate-limit rule on `/v1/ingest` (see below).
 Memory budget on this box (`docker-compose.vm.yml`): Redpanda 896M, Postgres 640M, Redis 256M, 3× app 192M ≈ 2.4 GB.

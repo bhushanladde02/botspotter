@@ -1,0 +1,18 @@
+# Fails any push/PR that contains files which must never be committed.
+name: guard
+on: [push, pull_request]
+jobs:
+  no-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: forbidden paths
+        run: |
+          bad=$(git ls-files | grep -E '^(private/|\.env$|.*\.key$|.*\.pem$|private/.*)' || true)
+          if [ -n "$bad" ]; then echo "::error::forbidden files committed:"; echo "$bad"; exit 1; fi
+          echo "no forbidden files"
+      - name: obvious secrets in tracked files
+        run: |
+          if git grep -nE '(BS_NAMING_SALT|PG_PASSWORD|BS_VISITOR_SECRET)=[0-9a-f]{32,}' -- . ':!.env.example' ; then
+            echo "::error::real-looking secret committed"; exit 1; fi
+          echo "clean"

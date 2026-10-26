@@ -1,0 +1,48 @@
+# CD: every push to main that passes tests is deployed to the Oracle VM.
+#
+# One-time setup (see docs/cicd.md):
+#   gh secret set VM_SSH_KEY  < ~/.ssh/sharpen_vm
+#   gh secret set VM_HOST     --body 129.213.153.181
+#   gh secret set VM_USER     --body ubuntu
+# Manual run: Actions → deploy → Run workflow (optionally with a branch/ref).
+name: deploy
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "*.md", "render.yaml"]
+  workflow_dispatch:
+    inputs:
+      ref: { description: "git ref to deploy", default: "main", required: false }
+concurrency: { group: deploy-prod, cancel-in-progress: false }
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: ssh key
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/vm && chmod 600 ~/.ssh/vm
+          ssh-keyscan -H "${{ secrets.VM_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: deploy
+        env:
+          REF: ${{ github.event.inputs.ref || 'main' }}
+        run: |
+          ssh -i ~/.ssh/vm "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" "GIT_REF=$REF bash -s" < deploy/remote.sh
+      - name: verify public URL
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://botspotter.app/healthz) && [ "$code" = 200 ] && echo "healthz 200" && exit 0
+            sleep 5
+          done
+          echo "healthz returned $code"; exit 1

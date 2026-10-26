@@ -24,6 +24,8 @@ sensor → `POST /v1/ingest` → classify (known registry / heuristics) → fing
 Full detail: [`docs/architecture.md`](docs/architecture.md).
 
 ## Docs
+Full documentation (Sphinx): https://bhushanladde02.github.io/botspotter/ — built from `docs/` by CI.
+
 | | |
 |---|---|
 | [architecture.md](docs/architecture.md) | components, data flow, identity model, failure modes |
@@ -32,6 +34,8 @@ Full detail: [`docs/architecture.md`](docs/architecture.md).
 | [decisions.md](docs/decisions.md) | why Python, why Redpanda not Kafka/Redis Streams, why no R2 snapshots… |
 | [runbook.md](docs/runbook.md) | deploy, keys, honeypots, rotate secrets, rebuild counters |
 | [sensors.md](docs/sensors.md) | add your site (Python middleware, Nginx+Vector, raw wire format) |
+| [cicd.md](docs/cicd.md) | tests → auto-deploy to the VM → docs to GitHub Pages |
+| [journey.md](docs/journey.md) | the whole story, idea to production |
 | [privacy.md](docs/privacy.md) | what is and isn't stored |
 
 ## Layout

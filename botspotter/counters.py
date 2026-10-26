@@ -1,7 +1,8 @@
 """Live state in Redis: counters, bot registry cache, map buckets,
 human-visitor HyperLogLog, discovery feed and the snapshot.
 
-Key layout (all prefixed `bs:`):
+Key layout (all prefixed ``bs:``)::
+
   bs:total                          total bot hits, all time
   bs:total:d:<YYYYMMDD>             bot hits per UTC day (expires 400d)
   bs:total:h:<YYYYMMDDHH>           bot hits per UTC hour (expires 14d)

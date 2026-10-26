@@ -12,3 +12,6 @@ venv/
 .idea/
 *.tgz
 .env.*.local
+docs/_build/
+private/
+.sync/
