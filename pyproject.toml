@@ -16,6 +16,7 @@ dependencies = [
     "redis>=5.0",
     "asyncpg>=0.29",
     "aiokafka>=0.10",
+    "lz4>=4.3",  # aiokafka lz4 compression codec
     "pydantic>=2.5",
     "maxminddb>=2.5",
 ]
