@@ -1,0 +1,30 @@
+# One-click production rollback: Actions → rollback → Run workflow → paste the last
+# good SHA (the failure alarm issue names it). Goes through the production environment,
+# so it still waits for the owner's approval. Redeploys exactly that revision with the
+# normal remote.sh (health + smoke + auto-rollback of the rollback).
+# Install: cp deploy/github/workflows/rollback.yml .github/workflows/rollback.yml
+name: rollback
+on:
+  workflow_dispatch:
+    inputs:
+      rev: { description: "git SHA or tag to redeploy (last known good)", required: true }
+concurrency: { group: deploy-prod, cancel-in-progress: false }
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ inputs.rev }}" }
+      - name: ssh key
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/vm && chmod 600 ~/.ssh/vm
+          ssh-keyscan -H "${{ secrets.VM_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: redeploy ${{ inputs.rev }}
+        run: ssh -i ~/.ssh/vm "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" "GIT_REF=${{ inputs.rev }} bash -s" < deploy/remote.sh
+      - name: verify
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://botspotter.app/healthz) && [ "$code" = 200 ] && echo "healthz 200" && exit 0; sleep 5
+          done; echo "healthz returned $code"; exit 1

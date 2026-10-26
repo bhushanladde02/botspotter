@@ -79,6 +79,44 @@ checks that revision out again and rebuilds, so a bad push costs a few minutes r
 is still red and says "rolled back". Fix forward and push again. ``ROLLBACK=0 bash deploy/remote.sh`` disables it when
 debugging directly on the VM. A deploy that fails *before* the build step (secrets, clone) changes nothing.
 
+The flow (mandatory, since 2026-10-26)
+--------------------------------------
+
+Every change — the owner's included — takes this path. Nothing merges to ``main`` and nothing deploys without the
+owner's explicit approval; GitHub enforces it (next section), the scripts make it convenient.
+
+1. **Feature branch**: ``git switch -c feat/<name>`` (never commit on ``main``; the ruleset refuses the push anyway).
+2. **Add + commit** the change, with its docs and tests in the same commit.
+3. **Merge request**: ``scripts/mr.sh feat/<name> "<message>"`` runs the tests and the gate locally, commits, pushes and
+   opens the PR with the checklist body (or ``gh pr create --web`` by hand).
+4. **CI must pass thoroughly** — three required checks on the PR: ``test`` (full pytest), ``no-secrets`` (guard) and
+   ``gate`` (the safety review below). The gate comments its report on the PR; a red check cannot be merged around.
+5. **Request to merge → owner notified**: ``.github/CODEOWNERS`` makes the owner the required reviewer of every file,
+   so any PR opened by someone else (a contributor, or Claude once the GitHub App is installed on the repo) lands as a
+   *review request* in the owner's GitHub notifications and email. A PR the owner opens himself needs no notification.
+6. **Review → approve → merge**: the owner reads the diff on the PR page and merges (squash or merge commit; linear
+   history). Anyone else's PR cannot be merged without his approving review.
+7. **Deploy waits for approval**: the ``deploy`` workflow pauses at the ``production`` environment; GitHub emails the
+   owner "Review deployments". Approve → ``remote.sh`` deploys with health + smoke checks and auto-rollback on failure.
+8. **If anything fails on ``main`` after the merge** (``ci`` or ``deploy``): ``alarm.yml`` opens an issue labelled
+   ``incident``, assigned to the owner (= email + notification) with the failed run, the last known good SHA, a
+   one-click **rollback** link (``rollback.yml`` → paste the SHA → approve) and the ask for a new MR with the fix.
+
+The AI/safety gate (``scripts/pr_gate.py``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Runs on every PR (``gate.yml``) and in ``mr.sh``. Deterministic and explainable — each finding names file, line and
+rule. **Blocks**: secret-like strings and DSNs with passwords; forbidden paths (``private/``, ``.env``, keys,
+archives, ``.sync/``); destructive operations (``FLUSHDB``/``FLUSHALL``, ``DROP``, ``TRUNCATE``, ``compose down -v``,
+``rm -rf /``, force-push, ``DELETE`` without ``WHERE``, retention removed or shortened below 90 days); rotation of
+``BS_NAMING_SALT``/``BS_VISITOR_SECRET`` defaults; weakening of the approval gates (CODEOWNERS, ruleset, deploy
+workflow — override only with the owner-applied label ``gate-change-approved``); code-execution patterns
+(``curl | sh``, ``eval``/``exec``, ``pickle.loads``, ``shell=True``); outbound hosts in app code outside the known
+list. **Warns** (listed for the reviewer, never fails): workflow, Dockerfile and dependency changes; privacy-relevant
+files (``models.py``, ``enrich.py``, ingest, ``privacy.rst``, ``index.html``); large deletions; binaries. Tests:
+``tests/test_pr_gate.py``. An LLM review (Anthropic's ``claude-code-action``) can be added on top later; it needs an
+API key secret and costs per PR, so it is not on by default.
+
 Approval gates (since 2026-10-26)
 ---------------------------------
 
@@ -100,6 +138,8 @@ What it sets:
    ``environment: production``) pauses with *Review deployments* on every run; only ``main`` may deploy to it.
 3. **Actions hardening**: workflow token read-only; workflows cannot approve PRs; fork PRs from outside contributors
    need approval before CI even runs.
+4. **Workflows** ``gate.yml``, ``rollback.yml``, ``alarm.yml`` copied from ``deploy/github/workflows/`` into
+   ``.github/workflows/`` if missing (commit them). ``gate`` is a required status check.
 
 Working flow (the owner's own changes go through the same door)::
 

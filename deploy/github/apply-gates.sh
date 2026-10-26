@@ -5,11 +5,17 @@
 #    repository admin (the owner) may bypass — needed to merge his own PRs, since
 #    GitHub never lets an author approve their own PR.
 # 2. "production" environment: the owner is a required reviewer; only main may deploy.
+# 3. Copies the gate/rollback/alarm workflows into .github/workflows if missing.
 # Docs: docs/cicd.rst "Approval gates".
 set -euo pipefail
 REPO="${REPO:-bhushanladde02/botspotter}"
 OWNER="${REPO%%/*}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+
+echo "== workflows (gate, rollback, alarm)"
+for w in gate rollback alarm; do
+  [ -f ".github/workflows/$w.yml" ] || { cp "$HERE/workflows/$w.yml" ".github/workflows/$w.yml"; echo "installed .github/workflows/$w.yml — commit it"; }
+done
 
 echo "== ruleset on main"
 existing=$(gh api "repos/$REPO/rulesets" --jq '.[] | select(.name=="main: owner approval required") | .id' || true)
