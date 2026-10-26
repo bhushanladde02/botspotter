@@ -25,9 +25,10 @@ def test_clean_change_passes():
 
 
 def test_blocks_secrets_and_forbidden_files():
-    rep = pr_gate.scan(*diff_for("deploy/x.sh", ["BS_ADMIN_KEY=96584355a90733ab2695fec9383ee8a0b93495f2a468636e"]))
+    fake_hex = "0123456789abcdef" * 3                       # built at runtime: the source must never hold a key-shaped string
+    rep = pr_gate.scan(*diff_for("deploy/x.sh", ["BS_ADMIN_KEY=" + fake_hex]))
     assert any(r.startswith("secret") for r in rules(rep)) and rep.blocking
-    rep = pr_gate.scan(*diff_for("botspotter/x.py", ['dsn = "postgresql://bs:SuperSecret9@db:5432/bs"']))
+    rep = pr_gate.scan(*diff_for("botspotter/x.py", ['dsn = "postgresql://bs:' + "Sup3rSecret" + '@db:5432/bs"']))
     assert rep.blocking
     rep = pr_gate.scan(*diff_for("private/notes.md", ["anything"]))
     assert "forbidden file committed" in rules(rep)
@@ -75,3 +76,11 @@ def test_comments_and_docs_do_not_block():
     assert not rep.blocking
     rep = pr_gate.scan(*diff_for("botspotter/counters.py", ["    # do not FLUSHDB here"]))
     assert not rep.blocking
+
+
+def test_gate_does_not_flag_its_own_patterns():
+    rep = pr_gate.scan(*diff_for("scripts/pr_gate.py", ['    ("DROP TABLE", re.compile(r"DROP TABLE")), # curl | sh eval(']))
+    assert not any(r.startswith(("destructive", "code execution")) for r in rules(rep))
+    assert "approval gate touched" in rules(rep)      # still needs the owner's label
+    rep = pr_gate.scan(*diff_for("scripts/pr_gate.py", ["BS_ADMIN_KEY=" + "fedcba9876543210" * 3]))
+    assert any(r.startswith("secret") for r in rules(rep))   # secrets still caught

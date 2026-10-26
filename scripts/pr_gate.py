@@ -73,7 +73,12 @@ CODE_EXT = (".py", ".sh", ".sql", ".yml", ".yaml", ".toml", ".json", ".js", ".ht
 
 PRIVACY_FILES = ("botspotter/models.py", "botspotter/enrich.py", "botspotter/ingest/app.py", "docs/privacy.rst", "web/index.html")
 GATE_FILES = (".github/CODEOWNERS", "deploy/github/main-ruleset.json", "deploy/github/apply-gates.sh",
-              ".github/workflows/deploy.yml", ".github/workflows/gate.yml")
+              ".github/workflows/deploy.yml", ".github/workflows/gate.yml", "deploy/github/workflows/gate.yml",
+              "scripts/pr_gate.py", "tests/test_pr_gate.py")
+# The gate's own source and tests contain the dangerous patterns *as patterns*; content
+# rules would flag themselves. They are gate files (label required) and still get the
+# secret scan, but not the destructive/RCE/host rules.
+SELF_FILES = ("scripts/pr_gate.py", "tests/test_pr_gate.py")
 
 
 @dataclass
@@ -164,7 +169,7 @@ def scan(diff: str, numstat: str, names: list[str]) -> Report:
             for rule, rx in SECRET_RES:
                 if rx.search(text) and "example" not in text.lower() and "<" not in text:
                     rep.add("B", f"secret: {rule}", path, n, text)
-            if is_code:
+            if is_code and path not in SELF_FILES:
                 for rule, rx in DESTRUCTIVE_RES:
                     if rx.search(text) and not text.lstrip().startswith(("#", "//", "--", "*", "-  ", ".. ")):
                         rep.add("B", f"destructive: {rule}", path, n, text)
@@ -183,7 +188,7 @@ def scan(diff: str, numstat: str, names: list[str]) -> Report:
                     for host in URL_RE.findall(text):
                         if not any(host == h or host.endswith("." + h) for h in ALLOWED_HOSTS):
                             rep.add("B", "new outbound host in app code", path, n, host)
-            if "remove_retention_policy" in text and "add_retention_policy" not in diff:
+            if path not in SELF_FILES and "remove_retention_policy" in text and "add_retention_policy" not in diff:
                 rep.add("B", "destructive: retention removed without re-add", path, n, text)
     return rep
 
