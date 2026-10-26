@@ -74,9 +74,23 @@ class PostgresStore(Store):
     async def write_visits(self, visits: list[PortalVisit]) -> None:
         if not visits or not self.pool:
             return
-        rows = [(_ts(v.ts), v.visitor, v.country, v.page) for v in visits]
+        cols = ["ts", "visitor", "country", "page", "vs", "ref", "city", "region", "browser", "os", "device", "lang"]
+        rows = [(_ts(v.ts), v.visitor, v.country, v.page, v.vs, v.ref, v.city, v.region, v.browser, v.os, v.device, v.lang)
+                for v in visits]
         async with self.pool.acquire() as con:
-            await con.copy_records_to_table("portal_visits", records=rows, columns=["ts", "visitor", "country", "page"])
+            await con.copy_records_to_table("portal_visits", records=rows, columns=cols)
+
+    async def visits_since(self, since_ts: float, limit: int = 200_000) -> list[PortalVisit]:
+        """Raw visit rows, newest first, for the owner-only audience ledger."""
+        if not self.pool:
+            return []
+        async with self.pool.acquire() as con:
+            recs = await con.fetch(
+                "SELECT ts, visitor, country, page, vs, ref, city, region, browser, os, device, lang "
+                "FROM portal_visits WHERE ts >= $1 ORDER BY ts DESC LIMIT $2", _ts(since_ts), limit)
+        return [PortalVisit(ts=r["ts"].timestamp(), visitor=r["visitor"], country=r["country"], page=r["page"], vs=r["vs"],
+                            ref=r["ref"], city=r["city"], region=r["region"], browser=r["browser"], os=r["os"],
+                            device=r["device"], lang=r["lang"]) for r in recs]
 
     async def upsert_bots(self, events: list[BotEvent]) -> None:
         if not events or not self.pool:

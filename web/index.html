@@ -532,7 +532,10 @@ function paint(s){
     rows($('feed'), s.feed.slice(0,10), f => `<div class="row" onmouseenter="focusBot('${esc(f.slug)}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(f.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(f.slug)}.svg?size=56" alt="" loading="lazy">${esc(f.name)}</span><div class="m">${esc(f.ua_family)} · ${f.sites} site${f.sites>1?'s':''} · ${esc(f.country)}</div></span><span class="m">${new Date(f.ts*1000).toLocaleTimeString()}</span></div>`);
     if (s.trust){ $('t_ver').textContent = fmt(s.trust.verified); $('t_imp').textContent = fmt(s.trust.impostors);
       rows($('t_ops'), s.trust.impostors_by_operator.slice(0,6), o => `<div class="row"><span class="n">pretending to be ${esc(o.operator)}</span><span class="h" style="color:#ff3b4f">${fmt(o.hits)}</span></div>`);
-      $('t_note').textContent = (s.trust.verified + s.trust.impostors) ? 'checked against OpenAI, Google, Microsoft, Apple, Perplexity, DuckDuckGo published ranges' : 'no verifiable hits yet — verification starts when the published ranges are loaded'; }
+      const ops = s.trust.operators || [], upd = s.trust.ranges_updated ? ' (ranges updated ' + s.trust.ranges_updated.slice(0,10) + ')' : '';
+      $('t_note').textContent = !ops.length ? 'published ranges not loaded on this server yet — no claims are made'
+        : (s.trust.verified + s.trust.impostors) ? `checked against ${ops.join(', ')}${upd}`
+        : `ready for ${ops.join(', ')}${upd} — none of their bots has visited a sensor yet`; }
     if (s.by_cloud) rows($('clouds'), s.by_cloud.slice(0,10), c => `<div class="row"><span class="n">${esc(c.cloud)}</span><span class="h">${fmt(c.hits)}</span></div>`);
     rows($('countries'), s.bots.by_country.slice(0,10), c => `<div class="row"><span class="n">${flag(c.country)} ${esc(c.country)}</span><span class="h">${fmt(c.hits)}</span></div>`);
     rows($('ops'), s.bots.by_operator.slice(0,10), o => `<div class="row"><span class="n">${esc(o.operator)}</span><span class="h">${fmt(o.hits)}</span></div>`);

@@ -43,6 +43,11 @@ if ! grep -q '^BS_ADMIN_KEY=' .env; then
   echo "generated BS_ADMIN_KEY — copy it from .env into private/notes.md (it opens /admin)"
 fi
 grep -q '^DATA_DIR=' .env || echo "DATA_DIR=$HOME/botspotter-data" >> .env
+# Vector sidecar for sharpen.com needs that site's sensor key as its own variable.
+if ! grep -q '^SHARPEN_SENSOR_KEY=' .env; then
+  SK=$(grep '^BS_SENSOR_KEYS=' .env | sed 's/^BS_SENSOR_KEYS=//' | tr ',' '\n' | awk -F: '$2=="sharpen"{print $1}' | head -1)
+  [ -n "$SK" ] && echo "SHARPEN_SENSOR_KEY=$SK" >> .env && echo "sharpen sensor key wired to the Vector sidecar"
+fi
 if grep -q '^CADDY_NETWORK=' .env; then sed -i "s|^CADDY_NETWORK=.*|CADDY_NETWORK=$NET|" .env; else echo "CADDY_NETWORK=$NET" >> .env; fi
 echo "caddy network: $NET"
 

@@ -1,0 +1,75 @@
+# BotSpotter sensor for any site behind Caddy, as a sidecar container — no code in the site.
+#
+# Caddy emits its JSON access log over TCP to this Vector (same Docker network); Vector keeps
+# non-browser requests, reduces them to the sensor wire format and posts batches to ingest.
+# In the site's Caddyfile block:
+#
+#     example.com {
+#         log {
+#             output net tcp/bs-vector:9000 {
+#                 soft_start          # Caddy keeps serving if Vector is down (lines are dropped)
+#             }
+#             format json
+#         }
+#         ...
+#     }
+#
+# Env: BS_KEY (sensor key for this site), BS_ENDPOINT (default: ingest on the same network),
+#      BS_HOST (only log lines for this host are forwarded; others are ignored).
+# Header NAMES come from Caddy's JSON object, so their order is Go-map order, not wire order:
+# fingerprints from Caddy sensors are consistent with each other, not with middleware sensors.
+
+[sources.caddy]
+type = "socket"
+mode = "tcp"
+address = "0.0.0.0:9000"
+decoding.codec = "bytes"
+
+[transforms.shape]
+type = "remap"
+inputs = ["caddy"]
+drop_on_error = true
+drop_on_abort = true
+source = '''
+ev = parse_json!(string!(.message))
+req = object!(ev.request)
+host = downcase(string(req.host) ?? "")
+if !contains(host, downcase(get_env_var("BS_HOST") ?? "")) { abort }
+hdr = object(req.headers) ?? {}
+names = []
+for_each(hdr) -> |k, _v| { names = push(names, downcase(k)) }
+ua = string(get!(hdr, ["User-Agent", 0])) ?? ""
+cc = string(get!(hdr, ["Cf-Ipcountry", 0])) ?? ""
+cfip = string(get!(hdr, ["Cf-Connecting-Ip", 0])) ?? ""
+ip = if cfip != "" { cfip } else { string(req.client_ip) ?? string(req.remote_ip) ?? "" }
+uri = string(req.uri) ?? "/"
+. = {
+  "ts": to_float(ev.ts) ?? to_unix_timestamp(now()),
+  "ip": ip,
+  "ua": ua,
+  "headers": names,
+  "cf_country": cc,
+  "method": string(req.method) ?? "GET",
+  "status": to_int(ev.status) ?? 200,
+  "path": if ends_with(uri, "robots.txt") { "/robots.txt" } else { "/" }
+}
+'''
+
+[transforms.drop_browsers]
+type = "filter"
+inputs = ["shape"]
+condition = '''
+ua = downcase(string!(.ua))
+!(contains(ua, "mozilla/") && includes(array!(.headers), "accept-language") && !contains(ua, "bot") && !contains(ua, "crawl") && !contains(ua, "spider"))
+'''
+
+[sinks.botspotter]
+type = "http"
+inputs = ["drop_browsers"]
+uri = "${BS_ENDPOINT:-http://bs-ingest:8001/v1/ingest}"
+method = "post"
+encoding.codec = "json"
+batch.max_events = 200
+batch.timeout_secs = 3
+request.headers.X-BS-Key = "${BS_KEY}"
+request.headers.Content-Type = "application/json"
