@@ -82,25 +82,34 @@ debugging directly on the VM. A deploy that fails *before* the build step (secre
 Approval gates (since 2026-10-26)
 ---------------------------------
 
-The repository is public and the VM is production, so two human approvals are mandatory. Both are GitHub settings,
-not workflow code:
+Strict rule: **nothing merges to ``main`` and nothing deploys without the owner's explicit approval** — not a
+collaborator, not a bot, not a workflow. The repository is public and the VM is production. Enforced by GitHub, not by
+convention; applied with one script::
 
-1. **Merge gate** — Settings → Branches → rule for ``main``: *Require a pull request before merging* (0 required
-   approvals: the owner cannot approve his own PR and is the only reviewer), *Require status checks* (``ci``,
-   ``guard``), *Do not allow bypassing*. Nobody — including the owner — pushes to ``main`` directly; every change is a
-   branch + PR whose diff is read before Merge.
-2. **Deploy gate** — Settings → Environments → ``production`` → *Required reviewers* = owner. The ``deploy`` job already
-   runs under ``environment: production``, so every run (push to ``main`` or manual) pauses after the tests with a
-   *Review deployments* button. Nothing reaches the VM until it is pressed.
+   bash deploy/github/apply-gates.sh      # idempotent; needs gh auth as the repo admin
 
-Working flow::
+What it sets:
 
-   git switch -c <branch>            # change on a branch
-   pytest -q                         # locally green first
+1. **Ruleset on ``main``** (``deploy/github/main-ruleset.json``): pull request required; **1 approving review from a
+   code owner** (``.github/CODEOWNERS`` makes the owner code owner of every file); stale approvals dismissed on new
+   pushes and the *last* push must be approved (no sneaking a commit in after review); review threads resolved; status
+   checks ``test`` (ci) and ``no-secrets`` (guard) green and up to date with ``main``; linear history; no force-push, no
+   deletion. Bypass list: **repository admin only** — that is the owner, and it is what lets him merge his own PRs
+   (GitHub never lets an author approve their own PR). Anyone else's PR needs his review, full stop.
+2. **``production`` environment**: owner is a required reviewer, so the ``deploy`` job (which runs under
+   ``environment: production``) pauses with *Review deployments* on every run; only ``main`` may deploy to it.
+3. **Actions hardening**: workflow token read-only; workflows cannot approve PRs; fork PRs from outside contributors
+   need approval before CI even runs.
+
+Working flow (the owner's own changes go through the same door)::
+
+   git switch -c <branch>
+   pytest -q
    git push -u origin <branch>
-   gh pr create --fill --web         # read the diff, wait for ci/guard, Merge
+   gh pr create --fill --web         # read the diff, wait for test/no-secrets, Merge (admin bypass)
    # Actions → deploy → Review deployments → Approve
    git switch main && git pull
 
-An emergency fix follows the same path; the PR is just small. ``deploy/oracle.sh`` from a laptop bypasses both gates
-and is for a dead CI only (operations log 2026-10-25).
+Verify any time: ``gh api repos/bhushanladde02/botspotter/rulesets --jq '.[].name'`` and
+``gh api repos/bhushanladde02/botspotter/environments/production --jq '.protection_rules'``. ``deploy/oracle.sh`` from a
+laptop bypasses the deploy gate and is for a dead CI only (operations log 2026-10-25).
