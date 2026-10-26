@@ -27,7 +27,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 autodoc_default_options = {"members": True, "undoc-members": True, "show-inheritance": True}
 autodoc_mock_imports = ["aiokafka", "asyncpg", "maxminddb", "django"]
 autosummary_generate = True
-suppress_warnings = ["sphinx_autodoc_typehints.forward_reference"]
+suppress_warnings = ["sphinx_autodoc_typehints.forward_reference", "sphinx_autodoc_typehints.guarded_import"]
 
 html_theme = "furo"
 html_title = "BotSpotter"
