@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 09:50
+     - Process: approval gates mandatory — branch protection on ``main`` (PR + green ``ci``/``guard``, no bypass) and required reviewer on the ``production`` environment (deploy pauses for owner approval). All changes now arrive as branches/PRs (docs/cicd.rst "Approval gates")
+     - Bhushan
    * - 2026-10-26 09:45
      - **Incident** (≈6 min): deploy of the ledger took api + aggregator down — ``migrations.sql`` splitter dropped the first statement (chunk began with the file's comment header), so ``ADD COLUMN vs`` never ran and the next statement failed; ``store.start()`` raised in both lifespans. Recovered by manual ``git checkout 259a674`` on the VM. Fixes: comment lines stripped before splitting (``split_sql`` + test); migration failures logged, never fatal; ``remote.sh`` now auto-rolls back to the previous revision when health or smoke fails (``ROLLBACK=0`` to disable)
      - Bhushan
