@@ -89,13 +89,15 @@ owner's explicit approval; GitHub enforces it (next section), the scripts make i
 2. **Add + commit** the change, with its docs and tests in the same commit.
 3. **Merge request**: ``scripts/mr.sh feat/<name> "<message>"`` runs the tests and the gate locally, commits, pushes and
    opens the PR with the checklist body (or ``gh pr create --web`` by hand).
-4. **CI must pass thoroughly** — three required checks on the PR: ``test`` (full pytest), ``no-secrets`` (guard) and
-   ``gate`` (the safety review below). The gate comments its report on the PR; a red check cannot be merged around.
+4. **CI must pass thoroughly** — required checks on the PR: ``test (3.10)``/``test (3.12)`` (full pytest), ``no-secrets``
+   (guard) and ``gate`` (the safety review below). The gate comments its report on the PR; a red check cannot be merged around.
 5. **Request to merge → owner notified**: ``.github/CODEOWNERS`` makes the owner the required reviewer of every file,
    so any PR opened by someone else (a contributor, or Claude once the GitHub App is installed on the repo) lands as a
    *review request* in the owner's GitHub notifications and email. A PR the owner opens himself needs no notification.
 6. **Review → approve → merge**: the owner reads the diff on the PR page and merges (squash or merge commit; linear
-   history). Anyone else's PR cannot be merged without his approving review.
+   history). For his *own* PRs GitHub cannot accept his approval (authors can't approve themselves), so the merge box
+   shows *Merge without waiting for requirements to be met (bypass rules)* — that checkbox is the owner-only path and
+   is logged as a bypass. Anyone else's PR cannot be merged without his approving review, and nobody else sees that box.
 7. **Deploy waits for approval**: the ``deploy`` workflow pauses at the ``production`` environment; GitHub emails the
    owner "Review deployments". Approve → ``remote.sh`` deploys with health + smoke checks and auto-rollback on failure.
 8. **If anything fails on ``main`` after the merge** (``ci`` or ``deploy``): ``alarm.yml`` opens an issue labelled
@@ -130,8 +132,9 @@ What it sets:
 
 1. **Ruleset on ``main``** (``deploy/github/main-ruleset.json``): pull request required; **1 approving review from a
    code owner** (``.github/CODEOWNERS`` makes the owner code owner of every file); stale approvals dismissed on new
-   pushes and the *last* push must be approved (no sneaking a commit in after review); review threads resolved; status
-   checks ``test`` (ci) and ``no-secrets`` (guard) green and up to date with ``main``; linear history; no force-push, no
+   pushes; review threads resolved; status
+   checks ``test (3.10)``, ``test (3.12)`` (ci matrix — the names must match exactly or the check waits forever),
+   ``no-secrets`` (guard) and ``gate`` green and up to date with ``main``; linear history; no force-push, no
    deletion. Bypass list: **repository admin only** — that is the owner, and it is what lets him merge his own PRs
    (GitHub never lets an author approve their own PR). Anyone else's PR needs his review, full stop.
 2. **``production`` environment**: owner is a required reviewer, so the ``deploy`` job (which runs under
