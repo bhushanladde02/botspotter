@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 11:05
+     - Deploy of the live map failed in step 2b (after the data refresh succeeded: City 50 MB, ASN 9 MB, 1928 crawler prefixes) and **auto-rolled back** in 40 s — first real use of the rollback. Cause not visible (``set -e`` exit without message). Fix: the whole runtime-data/cron step is now non-fatal, and the EXIT trap prints the failing command (``ERR`` trap records ``$BASH_COMMAND``). ``gate.yml`` re-runs on label changes
+     - Bhushan
    * - 2026-10-26 11:00
      - Feature (branch ``feat/live-map``, PR pending): live map — SSE stream ``/v1/live`` of every sighting, canvas arcs from bot origin to sensor site with labels, sensor markers, follow-bot mode, optional sound; GeoLite2 City + ASN on the VM (``deploy/refresh-data.sh``, weekly cron; MaxMind account 1436039, secrets set) → city-level origins and hosting labels; impostor verification against published crawler ranges (``verify.py``, ``jobs/crawler_ranges.py``); sensor locations ``sensors.json``; new cards "Real or impostor?" and "Where bots live"; Caddy: no compression for event streams, ``flush_interval -1``
      - Bhushan
