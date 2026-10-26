@@ -78,3 +78,29 @@ Automatic rollback
 checks that revision out again and rebuilds, so a bad push costs a few minutes rather than an outage; the workflow run
 is still red and says "rolled back". Fix forward and push again. ``ROLLBACK=0 bash deploy/remote.sh`` disables it when
 debugging directly on the VM. A deploy that fails *before* the build step (secrets, clone) changes nothing.
+
+Approval gates (since 2026-10-26)
+---------------------------------
+
+The repository is public and the VM is production, so two human approvals are mandatory. Both are GitHub settings,
+not workflow code:
+
+1. **Merge gate** — Settings → Branches → rule for ``main``: *Require a pull request before merging* (0 required
+   approvals: the owner cannot approve his own PR and is the only reviewer), *Require status checks* (``ci``,
+   ``guard``), *Do not allow bypassing*. Nobody — including the owner — pushes to ``main`` directly; every change is a
+   branch + PR whose diff is read before Merge.
+2. **Deploy gate** — Settings → Environments → ``production`` → *Required reviewers* = owner. The ``deploy`` job already
+   runs under ``environment: production``, so every run (push to ``main`` or manual) pauses after the tests with a
+   *Review deployments* button. Nothing reaches the VM until it is pressed.
+
+Working flow::
+
+   git switch -c <branch>            # change on a branch
+   pytest -q                         # locally green first
+   git push -u origin <branch>
+   gh pr create --fill --web         # read the diff, wait for ci/guard, Merge
+   # Actions → deploy → Review deployments → Approve
+   git switch main && git pull
+
+An emergency fix follows the same path; the PR is just small. ``deploy/oracle.sh`` from a laptop bypasses both gates
+and is for a dead CI only (operations log 2026-10-25).
