@@ -56,7 +56,7 @@ Read API (public, Redis-only, cache headers on everything)
      - returns
      - cache
    * - ``GET /v1/snapshot``
-     - counters, top bots, categories, hourly series, feed, sightings, humans, network (incl. ``sites``), ``trust`` (verified/impostor), ``by_cloud``; top bots and feed items carry ``places`` and sightings carry ``lat``/``lon`` so the page focuses the map on hover without a request
+     - counters, top bots, categories, hourly series, feed, sightings, humans, network (incl. ``sites``), ``trust`` (verified/impostor), ``by_cloud``, ``bots.hourly_prev`` + ``hourly_start_utc`` (trend); top bots and feed items carry ``places`` and sightings carry ``lat``/``lon`` so the page focuses the map on hover without a request
      - 2 s
    * - ``GET /v1/live``
      - server-sent events, one JSON per bot sighting: ts, name, slug, operator, category, verified, country, city, cloud, lat/lon (origin), site, dlat/dlon/dcity (sensor). Keepalive comment every 15 s

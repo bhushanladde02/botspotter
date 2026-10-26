@@ -10,6 +10,15 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 17:10
+     - "Bot hits today" dropped to 1 at 17:00 PDT = 00:00 UTC: daily counters are UTC days. The tile now sums the hourly series since the viewer's local midnight (no server change; data was never lost); human tiles and the peak line are labelled as UTC day
+     - Bhushan
+   * - 2026-10-26 17:05
+     - Root cause of "map unavailable" on iPhone found via the new client error reports: ``Can't find variable: cv`` — WebKit hoists function declarations out of blocks so they cannot see the block's ``const``; Chrome tolerates it. The map section is now a function scope (``initMap``). Also: the by-kind card redesign below
+     - Bhushan
+   * - 2026-10-26 16:50
+     - "Last 24 hours · by kind" card filled: taller chart with hour labels and hover breakdown, 24 h total, trend vs the previous 24 h (``snapshot.bots.hourly_prev``), peak hour, kind-share bar, named-vs-unidentified line with a sensor nudge. iPhone (Chrome iOS 148, iOS 17.2) shows "map unavailable": client error reports show only the consequence (``map.getZoom`` on null from the 10 s map refresh). Fix: refresh guarded when the map is off; the caught map-init error itself is now reported with its message/stack so the root cause is visible in ``/v1/admin/client-errors``
+     - Bhushan
    * - 2026-10-26 16:40
      - Launch prep (PR pending): sensor package publishable to PyPI via trusted publishing (``publish-sensor.yml``, tag ``sensor-vX.Y.Z``, ``pypi`` environment with owner approval) + README/metadata; install line on /sensors shows the git fallback until the first release; map/live layer wrapped so a device where WebGL/canvas fails still gets counters (suspected cause of blank numbers on iPhone); browsers report uncaught JS errors to ``/v1/client-error`` (``/v1/admin/client-errors``); ticker collapses repeated hits of one bot into ``×N``; every list gets a filter box and a rows selector (5 on phones / 10 on desktop, remembered)
      - Bhushan

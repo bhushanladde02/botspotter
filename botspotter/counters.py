@@ -333,9 +333,10 @@ class Counters:
         hours = []
         base = int(ts // 3600) * 3600
         p = self.r.pipeline(transaction=False)
-        for i in range(23, -1, -1):
+        for i in range(47, -1, -1):
             p.get(f"bs:total:h:{_hour(base - i * 3600)}")
-        hours = [int(x or 0) for x in await p.execute()]
+        hours48 = [int(x or 0) for x in await p.execute()]
+        hours, hours_prev = hours48[24:], hours48[:24]   # last 24 h and the 24 h before (for the trend)
 
         # today's peaks (UTC day): busiest hour for bot hits and for unique humans
         day_start = int(datetime.fromtimestamp(ts, tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
@@ -377,6 +378,8 @@ class Counters:
                 "distinct": int(n_bots),
                 "discovered": int(feed_len),
                 "hourly": hours,
+                "hourly_prev": hours_prev,
+                "hourly_start_utc": base - 23 * 3600,
                 "top": top_bots,
                 "by_country": [{"country": c.decode(), "hits": int(s)} for c, s in countries],
                 "by_category": [{"category": c.decode(), "hits": int(s)} for c, s in cats],
