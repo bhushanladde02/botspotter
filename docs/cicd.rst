@@ -158,7 +158,7 @@ Verify any time: ``gh api repos/bhushanladde02/botspotter/rulesets --jq '.[].nam
 laptop bypasses the deploy gate and is for a dead CI only (operations log 2026-10-25).
 
 Deploy rehearsal (``deploy/rehearse.sh``, since 2026-10-26)
-----------------------------------------------------------
+-----------------------------------------------------------
 
 Two of the three outages on 2026-10-26 would have been caught before merge by simply starting the stack once. So
 every PR now does exactly that in CI (``ci.yml`` job ``rehearse``, a required check): the real ``docker-compose.yml``
