@@ -47,6 +47,8 @@ class BotEvent(BaseModel):
     lon: float
     gh: str  # geohash precision 4
     hit_robots: bool = False
+    ua_host: str = ""  # public domain the bot names in its UA (+https://x/bot or x@y) — used for claim verification
+    homepage: str = ""  # registry homepage (known bots)
 
     def to_bytes(self) -> bytes:
         return orjson.dumps(self.model_dump())

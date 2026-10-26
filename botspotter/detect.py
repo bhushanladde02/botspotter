@@ -25,6 +25,7 @@ class Classification:
     operator: str  # "OpenAI", "unknown", …
     category: str  # one of CATEGORIES or "human"
     label: str  # registry pattern or heuristic reason
+    homepage: str = ""  # registry homepage for known bots
 
 
 @dataclass(frozen=True)
@@ -63,7 +64,7 @@ class Classifier:
         ua_l = ua.lower()
         for pat, bot in self._lower:
             if pat in ua_l:
-                return Classification(True, "known", bot.operator, bot.category, bot.pattern)
+                return Classification(True, "known", bot.operator, bot.category, bot.pattern, bot.homepage)
 
         hn = {h.lower() for h in header_names}
         if not ua:

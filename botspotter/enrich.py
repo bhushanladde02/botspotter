@@ -7,6 +7,7 @@ in-process mmdb lookup or a dict, hashing is blake2b. ~20µs per hit.
 from __future__ import annotations
 
 import hashlib
+import re
 import time
 from datetime import datetime, timezone
 
@@ -16,6 +17,16 @@ from .fingerprint import make_fingerprint, name_from_digest
 from .geo import Geo
 from .geohash import encode as geohash
 from .models import BotEvent, PortalVisit, SensorHit
+
+
+_UA_HOST_RE = re.compile(r"https?://([A-Za-z0-9.-]+\.[A-Za-z]{2,})|[\w.+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})")
+
+
+def ua_host(ua: str) -> str:
+    """Domain a bot publicly names in its User-Agent (contact URL or email). Public
+    operator info, not personal data; lets the operator prove ownership via .well-known."""
+    m = _UA_HOST_RE.search(ua or "")
+    return (m.group(1) or m.group(2) or "").lower() if m else ""
 
 
 class Enricher:
@@ -48,6 +59,8 @@ class Enricher:
             lon=g.lon,
             gh=geohash(g.lat, g.lon, 4),
             hit_robots=hit.path.rstrip("/").endswith("robots.txt"),
+            ua_host=ua_host(hit.ua),
+            homepage=cls.homepage,
         )
 
     def portal_visit(self, ip: str, ua: str, cf_country: str, page: str = "/") -> PortalVisit:

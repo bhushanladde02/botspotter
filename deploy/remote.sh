@@ -87,5 +87,11 @@ if [ "$AFTER" -le "$BEFORE" ]; then
 fi
 echo "pipeline OK (ingest -> redpanda -> aggregator -> redis -> api)"
 
+step "6b/7 nightly backup cron"
+chmod +x deploy/backup.sh
+CRON_LINE="17 9 * * * $APP_DIR/deploy/backup.sh >> $HOME/botspotter-backups/backup.log 2>&1"
+( crontab -l 2>/dev/null | grep -v 'botspotter/deploy/backup.sh'; echo "$CRON_LINE" ) | crontab -
+echo "cron: $CRON_LINE"
+
 step "7/7 done"
 echo "sensor keys (site owners):"; grep '^BS_SENSOR_KEYS=' .env | sed 's/^BS_SENSOR_KEYS=//' | tr ',' '\n' | sed 's/^/  /'

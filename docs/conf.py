@@ -12,7 +12,6 @@ copyright = f"{date.today().year}, {author}"
 release = botspotter.__version__
 
 extensions = [
-    "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
@@ -20,9 +19,7 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx_copybutton",
 ]
-myst_enable_extensions = ["colon_fence", "deflist", "tasklist"]
-myst_heading_anchors = 3
-source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
+source_suffix = {".rst": "restructuredtext"}
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 autodoc_default_options = {"members": True, "undoc-members": True, "show-inheritance": True}
 autodoc_mock_imports = ["aiokafka", "asyncpg", "maxminddb", "django"]

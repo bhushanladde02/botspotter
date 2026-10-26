@@ -7,6 +7,11 @@ GET /v1/bots/{slug}        one bot's profile
 GET /v1/search?q=          name search (prefix, then substring)
 GET /v1/feed               newly discovered bots
 GET /v1/sightings          live ticker of recent hits (bot, site, country)
+POST /v1/claims            start a claim (slug, email, method)  → token + instructions
+GET  /v1/claims/{token}    claim status; returns owner_key once verified
+POST /v1/claims/{token}/check   verify via /.well-known file
+GET  /verify/{token}       the claimed BOT fetches this; fingerprint must match
+PATCH /v1/bots/{slug}      X-BS-Owner: <owner_key> — rename / describe / homepage / operator / category
 GET /v1/sensors            leaderboard of sites that caught the most bots
 GET /healthz
 
@@ -25,6 +30,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from ..config import settings
+from ..claims import Claims
 from ..counters import Counters
 from ..enrich import Enricher
 from ..models import SensorHit
@@ -41,6 +47,7 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
         app.state.counters = counters or Counters.from_url()
         app.state.stream = stream or make_stream()
         app.state.enricher = enricher or Enricher()
+        app.state.claims = Claims(app.state.counters)
         await app.state.stream.start()
         yield
         await app.state.stream.stop()
@@ -105,6 +112,59 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
         """Live ticker: the most recent bot hits across every sensor."""
         return cached({"sightings": await request.app.state.counters.sightings(limit)}, 2)
 
+    # ------------------------------------------------------------ claims
+    def _ip(request: Request) -> str:
+        h = request.headers
+        return (h.get("cf-connecting-ip") or (h.get("x-forwarded-for") or "").split(",")[0].strip()
+                or (request.client.host if request.client else ""))
+
+    @app.post("/v1/claims", status_code=201)
+    async def create_claim(request: Request):
+        try:
+            body = orjson.loads(await request.body() or b"{}")
+        except Exception:
+            raise HTTPException(400, "bad json")
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "botspotter.app"
+        scheme = "http" if host.startswith(("localhost", "127.")) else "https"
+        res = await request.app.state.claims.create(str(body.get("slug", "")), str(body.get("email", "")),
+                                                    str(body.get("method", "fetch")), _ip(request), f"{scheme}://{host}")
+        return Response(orjson.dumps(res.body), status_code=res.status, media_type="application/json")
+
+    @app.get("/v1/claims/{token}")
+    async def claim_status(request: Request, token: str):
+        res = await request.app.state.claims.status(token)
+        return Response(orjson.dumps(res.body), status_code=res.status, media_type="application/json",
+                        headers={"Cache-Control": "no-store"})
+
+    @app.post("/v1/claims/{token}/check")
+    async def claim_check_wellknown(request: Request, token: str):
+        res = await request.app.state.claims.check_wellknown(token)
+        return Response(orjson.dumps(res.body), status_code=res.status, media_type="application/json")
+
+    @app.get("/verify/{token}")
+    async def verify_fetch(request: Request, token: str):
+        """The bot being claimed must fetch this. We fingerprint THIS request."""
+        h = request.headers
+        hit = SensorHit(ua=h.get("user-agent", ""), headers=list(h.keys()), ip=_ip(request),
+                        cf_country=h.get("cf-ipcountry", ""), ja4=h.get("x-bs-ja4", ""), path=request.url.path)
+        ev = request.app.state.enricher.bot_event(hit, PORTAL_SITE)
+        res = await request.app.state.claims.verify_fetch(token, ev.fp if ev else None)
+        return Response(orjson.dumps(res.body), status_code=res.status, media_type="application/json",
+                        headers={"Cache-Control": "no-store"})
+
+    @app.patch("/v1/bots/{slug}")
+    async def update_bot(request: Request, slug: str):
+        owner_key = request.headers.get("x-bs-owner", "")
+        bot = await request.app.state.claims.authorize(slug, owner_key)
+        if bot is None:
+            raise HTTPException(403, "invalid owner key for this bot")
+        try:
+            patch = orjson.loads(await request.body() or b"{}")
+        except Exception:
+            raise HTTPException(400, "bad json")
+        res = await request.app.state.claims.update(bot, patch)
+        return Response(orjson.dumps(res.body), status_code=res.status, media_type="application/json")
+
     @app.get("/v1/sensors")
     async def sensors(request: Request, limit: int = Query(20, le=100)):
         return cached({"sensors": await request.app.state.counters.top_sensors(limit)}, 30)
@@ -117,6 +177,7 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
         @app.get("/about")
         @app.get("/sensors")
         @app.get("/terms")
+        @app.get("/claim")
         async def static_page():
             return FileResponse(WEB_DIR / "index.html", headers={"Cache-Control": "public, max-age=60"})
 

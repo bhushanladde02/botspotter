@@ -128,6 +128,10 @@ class Counters:
                 p.hsetnx(f"bs:bot:{e.fp}", "fam", e.fam)
                 p.hsetnx(f"bs:bot:{e.fp}", "first_seen", ts)
                 p.hsetnx(f"bs:bot:{e.fp}", "first_country", e.country)
+                if e.ua_host:
+                    p.hsetnx(f"bs:bot:{e.fp}", "ua_host", e.ua_host)
+                if e.homepage:
+                    p.hsetnx(f"bs:bot:{e.fp}", "registry_homepage", e.homepage)
                 p.set(f"bs:name:{slug}", e.fp)
                 p.zadd("bs:names", {slug: 0})
                 p.zadd(f"bs:fam:{e.fam}", {e.fp: ts}, nx=True)
@@ -226,13 +230,14 @@ class Counters:
         # Resolve names for the top bots in one round trip.
         p = self.r.pipeline(transaction=False)
         for fp, _ in top:
-            p.hmget(f"bs:bot:{fp.decode()}", "name", "slug", "operator", "category", "kind")
+            p.hmget(f"bs:bot:{fp.decode()}", "name", "slug", "operator", "category", "kind", "display_name", "claimed_at")
         metas = await p.execute()
         top_bots = []
         for (fp, score), meta in zip(top, metas):
-            name, slug, op, cat, kind = [m.decode() if m else "" for m in meta]
+            name, slug, op, cat, kind, dname, claimed = [m.decode() if m else "" for m in meta]
             top_bots.append({"fp": fp.decode(), "name": name, "slug": slug, "operator": op,
-                             "category": cat, "kind": kind, "hits": int(score)})
+                             "category": cat, "kind": kind, "hits": int(score),
+                             "display_name": dname or None, "claimed": bool(claimed)})
 
         # last 24 hourly totals for the sparkline
         hours = []
@@ -371,6 +376,17 @@ class Counters:
             "last_country": m.get("last_country"), "last_site": m.get("last_site"),
             "recent": [{k: v for k, v in r.items() if k not in ("fp", "name", "category")} for r in recent],
             "evolved_from": ev_meta,
+            # claim / identity management (see claims.py)
+            "claimed": bool(m.get("claimed_at")),
+            "claimed_at": float(m["claimed_at"]) if m.get("claimed_at") else None,
+            "claim_method": m.get("claim_method"),
+            "display_name": m.get("display_name"),
+            "display_slug": m.get("display_slug"),
+            "description": m.get("desc"),
+            "homepage": m.get("homepage"),
+            "contact_url": m.get("contact_url"),
+            "ua_host": m.get("ua_host"),
+            "registry_homepage": m.get("registry_homepage"),
         }
 
     async def search(self, q: str, limit: int = 20) -> list[dict]:
@@ -387,14 +403,17 @@ class Counters:
             p.get(f"bs:name:{s.decode()}")
         fps = await p.execute()
         p = self.r.pipeline(transaction=False)
-        for fp in fps:
-            p.hmget(f"bs:bot:{fp.decode()}", "name", "slug", "operator", "category")
+        seen: set[bytes] = set()
+        uniq = [fp for fp in fps if fp and not (fp in seen or seen.add(fp))]
+        for fp in uniq:
+            p.hmget(f"bs:bot:{fp.decode()}", "name", "slug", "operator", "category", "display_name", "claimed_at")
             p.zscore("bs:bots", fp.decode())
         res = await p.execute()
         out = []
         for i in range(0, len(res), 2):
-            name, slug, op, cat = [x.decode() if x else "" for x in res[i]]
-            out.append({"name": name, "slug": slug, "operator": op, "category": cat, "hits": int(res[i + 1] or 0)})
+            name, slug, op, cat, dname, claimed = [x.decode() if x else "" for x in res[i]]
+            out.append({"name": name, "slug": slug, "operator": op, "category": cat, "hits": int(res[i + 1] or 0),
+                        "display_name": dname or None, "claimed": bool(claimed)})
         return out
 
     async def sightings(self, limit: int = 100) -> list[dict]:

@@ -1,9 +1,9 @@
-# Module reference
+Module reference
+================
 
 Generated from docstrings. The core library is small on purpose; read the
 module docstrings for the design intent of each piece.
 
-```{eval-rst}
 .. automodule:: botspotter.config
 .. automodule:: botspotter.fingerprint
 .. automodule:: botspotter.names
@@ -22,4 +22,3 @@ module docstrings for the design intent of each piece.
 .. automodule:: botspotter.ingest.app
 .. automodule:: botspotter.api.app
 .. automodule:: botspotter.aggregator.run
-```

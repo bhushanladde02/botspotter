@@ -1,4 +1,4 @@
-# Batch jobs run here for free instead of Airflow on the VM (docs/free-tier.md).
+# Batch jobs run here for free instead of Airflow on the VM (docs/free-tier.rst).
 # When there are enough of these to justify 2 GB of RAM, move them to Airflow DAGs.
 name: jobs
 on:

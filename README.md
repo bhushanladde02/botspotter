@@ -15,28 +15,28 @@ python scripts/seed_traffic.py --url http://localhost:8000/v1/ingest --key devke
 
 ## Full stack (Oracle free VM or any Docker host)
 ```bash
-cp .env.example .env && docker compose up -d --build   # see docs/runbook.md
+cp .env.example .env && docker compose up -d --build   # see docs/runbook.rst
 ```
 
 ## How it works (30 seconds)
 sensor → `POST /v1/ingest` → classify (known registry / heuristics) → fingerprint (UA family + header order + network for unknowns) → **drop the IP** → Redpanda → aggregator → Redis counters + Postgres/Timescale history → `/v1/snapshot` every second → CDN-cached → the page polls it.
 
-Full detail: [`docs/architecture.md`](docs/architecture.md).
+Full detail: [`docs/architecture.rst`](docs/architecture.rst).
 
 ## Docs
 Full documentation (Sphinx): https://bhushanladde02.github.io/botspotter/ — built from `docs/` by CI.
 
 | | |
 |---|---|
-| [architecture.md](docs/architecture.md) | components, data flow, identity model, failure modes |
-| [free-tier.md](docs/free-tier.md) | exactly how this fits Oracle Always Free + Cloudflare Free, RAM budget |
-| [growth.md](docs/growth.md) | what changes at each traffic tier and the number that triggers it; feature backlog |
-| [decisions.md](docs/decisions.md) | why Python, why Redpanda not Kafka/Redis Streams, why no R2 snapshots… |
-| [runbook.md](docs/runbook.md) | deploy, keys, honeypots, rotate secrets, rebuild counters |
-| [sensors.md](docs/sensors.md) | add your site (Python middleware, Nginx+Vector, raw wire format) |
-| [cicd.md](docs/cicd.md) | tests → auto-deploy to the VM → docs to GitHub Pages |
-| [journey.md](docs/journey.md) | the whole story, idea to production |
-| [privacy.md](docs/privacy.md) | what is and isn't stored |
+| [architecture.rst](docs/architecture.rst) | components, data flow, identity model, failure modes |
+| [free-tier.rst](docs/free-tier.rst) | exactly how this fits Oracle Always Free + Cloudflare Free, RAM budget |
+| [growth.rst](docs/growth.rst) | what changes at each traffic tier and the number that triggers it; feature backlog |
+| [decisions.rst](docs/decisions.rst) | why Python, why Redpanda not Kafka/Redis Streams, why no R2 snapshots… |
+| [runbook.rst](docs/runbook.rst) | deploy, keys, honeypots, rotate secrets, rebuild counters |
+| [sensors.rst](docs/sensors.rst) | add your site (Python middleware, Nginx+Vector, raw wire format) |
+| [cicd.rst](docs/cicd.rst) | tests → auto-deploy to the VM → docs to GitHub Pages |
+| [journey.rst](docs/journey.rst) | the whole story, idea to production |
+| [privacy.rst](docs/privacy.rst) | what is and isn't stored |
 
 ## Layout
 ```
@@ -60,4 +60,4 @@ Python 3.10+ · FastAPI · Granian/uvloop · Redpanda · Redis · PostgreSQL + T
 Built by Bhushan Ladde. Architecture, analysis and testing are his own; AI assistance (Claude) was used for drafting code and docs.
 
 ## License
-MIT
+MIT © 2026 Bhushan Arun Ladde — see [LICENSE](LICENSE).

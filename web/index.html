@@ -110,7 +110,7 @@
 <header>
   <div class="logo">Bot<span>Spotter</span> <span style="font-weight:400;color:var(--muted);font-size:12px">beta</span></div>
   <div class="live"><span class="dot"></span><span id="status">connecting…</span></div>
-  <nav class="nav"><a href="/" id="nav_live" onclick="return go('/')">Live</a><a href="/about" id="nav_about" onclick="return go('/about')">What is this?</a><a href="/sensors" id="nav_sensors" onclick="return go('/sensors')">Add your site</a></nav>
+  <nav class="nav"><a href="/" id="nav_live" onclick="return go('/')">Live</a><a href="/about" id="nav_about" onclick="return go('/about')">What is this?</a><a href="/sensors" id="nav_sensors" onclick="return go('/sensors')">Add your site</a><a href="/claim" id="nav_claim" onclick="return go('/claim')">Claim your bot</a></nav>
   <div class="search">
     <input id="q" placeholder="search a bot name… e.g. copper heron" autocomplete="off">
     <div class="results" id="results"></div>
@@ -165,6 +165,9 @@
     <li><strong>If you're curious:</strong> watch the AI economy happen in real time. Which countries are crawled most? Whose bots are busiest? What showed up this week that didn't exist last week?</li>
     <li><strong>If you write or research:</strong> a public, live, citable source on AI crawler activity that isn't owned by a single cloud provider.</li>
   </ul>
+
+  <h2>Run a bot? Claim it</h2>
+  <p>Operators can <a href="/claim" onclick="return go('/claim')">claim their bot</a>: prove control (make the bot fetch a one-time URL, or publish a token on its homepage), then give it a proper name, description and category. Claimed bots carry a ✓ and the generated name stays as an alias.</p>
 
   <h2>What we don't do</h2>
   <p>We don't store IP addresses, page contents, or anything about human visitors beyond a daily count. Bots are named by a hash, never exposed. Humans are counted without cookies. The numbers here are visits seen by participating sites, not &ldquo;the whole internet&rdquo; &mdash; the more sensors join, the closer it gets.</p>
@@ -270,7 +273,53 @@ BOTSPOTTER_KEY = "YOUR_KEY"</pre>
   <h2>11. Governing law and changes</h2>
   <p>These terms are governed by the laws of the State of California, USA, without regard to conflict-of-law rules; courts in Sacramento County, California have exclusive jurisdiction. We may update these terms; material changes will be dated here and announced on the site. Continued use after a change is acceptance.</p>
 
+  <h2>12. Claiming a bot</h2>
+  <p>A bot may be claimed by its operator after verification (a fetch challenge the bot itself answers, or a token published on the bot's homepage domain). We store the contact email you give us as a salted hash once verified, plus the public fields you set (name, description, homepage, operator, category). You warrant that you operate the bot and that the information is accurate. Names must not impersonate others, mislead about the operator, or be offensive; we may edit or revoke a claim, and will do so on a substantiated dispute sent to hello@botspotter.app. The generated name remains a permanent public alias. The owner key is shown once; we cannot recover it, but you can re-verify to obtain a new one.</p>
+
   <p style="margin-top:30px"><a href="/sensors" onclick="return go('/sensors')">&larr; add your site</a> &nbsp;·&nbsp; <a href="/" onclick="return go('/')">live counter</a></p>
+</section>
+
+<section class="about" id="page-claim">
+  <h1>Claim your bot</h1>
+  <p>Run a crawler or an agent that shows up here? Prove it's yours and you can give it a proper name, a description, a homepage and the right category. The generated name stays as a permanent alias so old links keep working. Claiming is free.</p>
+
+  <h2>1 &middot; Which bot?</h2>
+  <form id="claimform" onsubmit="return startClaim(event)">
+    <input name="slug" id="claim_slug" placeholder="bot name or slug, e.g. copper-heron-0042" required>
+    <input name="email" type="email" placeholder="contact email (kept private, hashed after verification)" required>
+    <label class="chk"><input type="radio" name="method" value="fetch" checked><span><strong>Fetch challenge</strong> — make your bot request a one-time URL. Works for any bot; its fingerprint must match.</span></label>
+    <label class="chk"><input type="radio" name="method" value="wellknown"><span><strong>Well-known file</strong> — publish a token at <span class="ex">/.well-known/botspotter-verify.txt</span> on the bot's homepage domain (registry homepage, or the domain in its User-Agent).</span></label>
+    <label class="chk"><input type="checkbox" id="claim_agree" onchange="$('claimbtn').disabled=!this.checked"><span>I operate this bot and accept the <a href="/terms" onclick="return go('/terms')">Terms</a> (§12 Claims).</span></label>
+    <button id="claimbtn" type="submit" disabled>Start claim</button>
+    <div class="note" id="claimmsg" style="display:none"></div>
+  </form>
+
+  <div id="claim_step2" style="display:none">
+    <h2>2 &middot; Verify</h2>
+    <div class="note" id="claim_instructions"></div>
+    <p style="margin-top:10px"><button onclick="checkClaim()">Check status</button> <span id="claim_status" class="m"></span></p>
+  </div>
+
+  <div id="claim_manage" style="display:none">
+    <h2>3 &middot; Manage <span id="manage_name" class="ex"></span></h2>
+    <p>Verified. Keep your owner key somewhere safe; it is the only way to edit this bot later: <span class="ex" id="owner_key_show"></span></p>
+    <form onsubmit="return saveBot(event)">
+      <input name="display_name" placeholder="public name (3–40 chars) — leave empty to keep the generated name">
+      <input name="operator" placeholder="operator / company">
+      <select name="category" style="background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;font:inherit;font-size:14px">
+        <option value="">category…</option><option value="training">training crawler</option><option value="search">AI search</option><option value="agent">AI agent (fetches for a live user)</option><option value="scraper">scraper</option><option value="seo">SEO</option><option value="other">other</option>
+      </select>
+      <input name="homepage" placeholder="homepage https://…">
+      <input name="contact_url" placeholder="contact / robots policy URL (optional)">
+      <textarea name="description" rows="3" placeholder="what does it do? (280 chars)"></textarea>
+      <button type="submit">Save</button>
+      <div class="note" id="savemsg" style="display:none"></div>
+    </form>
+  </div>
+
+  <h2>Already verified?</h2>
+  <p>Open <span class="ex">/claim?slug=&lt;your-bot&gt;</span> and paste your owner key: <input id="owner_key_in" placeholder="owner key" style="width:280px;margin:0 6px"> <button onclick="useOwnerKey()">Manage</button></p>
+  <p class="note">Abuse, impersonation or misleading names get the claim revoked (<a href="/terms" onclick="return go('/terms')">Terms §12</a>). To dispute a claim, email <a href="mailto:hello@botspotter.app">hello@botspotter.app</a>.</p>
 </section>
 
 <div class="modal" id="modal"><div class="box">
@@ -284,12 +333,14 @@ BOTSPOTTER_KEY = "YOUR_KEY"</pre>
   <div class="share">
     <button onclick="copyLink()">copy link</button>
     <button onclick="shareX()">share on X</button>
+    <button onclick="closeModal(); go('/claim?slug='+currentSlug)">this is my bot</button>
   </div>
 </div></div>
 
 <footer>
   BotSpotter counts bot <em>visits</em> seen by participating sites; no one sees the whole internet. No IPs are stored, bots are named by a hash, humans are counted without cookies.
-  · <a href="/sensors" onclick="return go('/sensors')">add your site</a> · <a href="/terms" onclick="return go('/terms')">terms</a> · <a href="/about" onclick="return go('/about')">about</a>
+  · <a href="/sensors" onclick="return go('/sensors')">add your site</a> · <a href="/claim" onclick="return go('/claim')">claim your bot</a> · <a href="/terms" onclick="return go('/terms')">terms</a> · <a href="/about" onclick="return go('/about')">about</a>
+  <div style="margin-top:8px;font-size:11px;opacity:.6">&copy; 2026 Bhushan Arun Ladde · open source under the <a href="https://github.com/bhushanladde02/botspotter/blob/main/LICENSE" rel="license">MIT License</a></div>
 </footer>
 
 <script>
@@ -345,7 +396,7 @@ function spark(canvas, data, color){
 
 // ---------- lists
 function rows(el, items, render){ el.innerHTML = items.length ? items.map(render).join('') : '<div class="row m">nothing yet — bots are shy</div>'; }
-const botRow = b => `<div class="row" onclick="openBot('${esc(b.slug)}')" style="cursor:pointer"><span><span class="n">${esc(b.name)}</span><span class="tag ${esc(b.category)}">${esc(b.operator==='unknown'?'unknown':b.operator)}</span></span><span class="h">${fmt(b.hits)}</span></div>`;
+const botRow = b => `<div class="row" onclick="openBot('${esc(b.slug)}')" style="cursor:pointer"><span><span class="n">${esc(b.display_name||b.name)}${b.claimed?' <span title="claimed by operator" style="color:var(--acid)">✓</span>':''}</span><span class="tag ${esc(b.category)}">${esc(b.operator==='unknown'?'unknown':b.operator)}</span></span><span class="h">${fmt(b.hits)}</span></div>`;
 
 // ---------- snapshot polling (CDN-cached, 2s)
 let lastSnap = null;
@@ -422,12 +473,13 @@ map.on('load',()=>{
 
 // ---------- search + bot profile
 let timer;
-$('q').addEventListener('input', e => { clearTimeout(timer); const q=e.target.value.trim(); if(!q){$('results').style.display='none';return;} timer=setTimeout(async()=>{ const r=await (await fetch(API+'/v1/search?q='+encodeURIComponent(q))).json(); const el=$('results'); el.innerHTML = r.results.length? r.results.map(b=>`<div onclick="openBot('${esc(b.slug)}')">${esc(b.name)} <span class="m">· ${esc(b.operator)} · ${fmt(b.hits)} hits</span></div>`).join('') : '<div class="m">no bot by that name — yet</div>'; el.style.display='block'; },180); });
+$('q').addEventListener('input', e => { clearTimeout(timer); const q=e.target.value.trim(); if(!q){$('results').style.display='none';return;} timer=setTimeout(async()=>{ const r=await (await fetch(API+'/v1/search?q='+encodeURIComponent(q))).json(); const el=$('results'); el.innerHTML = r.results.length? r.results.map(b=>`<div onclick="openBot('${esc(b.slug)}')">${esc(b.display_name||b.name)}${b.display_name?` <span class="m">(${esc(b.name)})</span>`:''} <span class="m">· ${esc(b.operator)} · ${fmt(b.hits)} hits</span></div>`).join('') : '<div class="m">no bot by that name — yet</div>'; el.style.display='block'; },180); });
 document.addEventListener('click', e => { if(!e.target.closest('.search')) $('results').style.display='none'; });
 let currentSlug = '';
 async function openBot(slug){
   const r = await fetch(API+'/v1/bots/'+slug); if(!r.ok) return; const b = await r.json(); currentSlug = slug;
-  $('m_name').textContent = b.name; $('m_sub').innerHTML = `${esc(b.operator)} · <span class="tag ${esc(b.category)}">${esc(b.category)}</span> · ${b.kind==='known'?'publicly known crawler':'unidentified automation'}`;
+  $('m_name').textContent = b.display_name || b.name;
+  $('m_sub').innerHTML = `${b.display_name?`aka <span class="ex">${esc(b.name)}</span> · `:''}${esc(b.operator)} · <span class="tag ${esc(b.category)}">${esc(b.category)}</span> · ${b.claimed?'<span class="tag" style="color:var(--acid)">✓ claimed by operator</span>':(b.kind==='known'?'publicly known crawler':'unidentified automation')}${b.description?`<div style="margin-top:8px;color:var(--text)">${esc(b.description)}</div>`:''}${b.homepage?`<div style="margin-top:4px"><a href="${esc(b.homepage)}" target="_blank" rel="noopener nofollow">${esc(b.homepage)}</a></div>`:''}`;
   const first = new Date(b.first_seen*1000), last = new Date(b.last_seen*1000);
   $('m_kv').innerHTML = [
     ['hits', fmt(b.hits)], ['sites crawled', fmt(b.sites)], ['first spotted', first.toLocaleString()+' ('+flag(b.first_country)+' '+esc(b.first_country)+')'],
@@ -444,11 +496,36 @@ function shareX(){ const t = encodeURIComponent(`I just found ${$('m_name').text
 $('modal').addEventListener('click', e => { if(e.target.id==='modal') closeModal(); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
 function go(path){ history.pushState(null,'',path); route(); window.scrollTo(0,0); return false; }
-const PAGES = {'/about':'page-about','/sensors':'page-sensors','/terms':'page-terms'};
+const PAGES = {'/about':'page-about','/sensors':'page-sensors','/terms':'page-terms','/claim':'page-claim'};
 function route(){ const page = PAGES[location.pathname] || null; document.body.classList.toggle('about-mode', !!page);
   for (const id of Object.values(PAGES)) $(id).style.display = page===id ? 'block' : 'none';
-  $('nav_about').classList.toggle('on', page==='page-about'); $('nav_sensors').classList.toggle('on', page==='page-sensors'||page==='page-terms'); $('nav_live').classList.toggle('on', !page);
+  $('nav_about').classList.toggle('on', page==='page-about'); $('nav_sensors').classList.toggle('on', page==='page-sensors'||page==='page-terms'); $('nav_claim').classList.toggle('on', page==='page-claim'); $('nav_live').classList.toggle('on', !page);
+  if (page==='page-claim') { const q = new URLSearchParams(location.search).get('slug'); if (q) $('claim_slug').value = q; }
   if (!page && map) setTimeout(()=>map.resize(), 50); }
+// ---------- claim your bot
+let claimToken = null, claimSlug = null, ownerKey = null;
+async function startClaim(e){ e.preventDefault(); const f = new FormData(e.target); claimSlug = slugOf(f.get('slug'));
+  const r = await fetch(API+'/v1/claims', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({slug: claimSlug, email: f.get('email'), method: f.get('method')})});
+  const j = await r.json(); const m = $('claimmsg'); m.style.display='block';
+  if (!r.ok) { m.textContent = j.error || 'could not start claim'; return false; }
+  m.textContent = `Claim started for ${j.bot.name}. Token valid 7 days.`; claimToken = j.token; $('claim_step2').style.display='block';
+  $('claim_instructions').innerHTML = j.method==='fetch'
+    ? `Make <b>${esc(j.bot.name)}</b> send a GET request (with its normal User-Agent and headers, from its normal network) to:<br><span class="ex">${esc(j.verify_url)}</span><br><small>${esc(j.how)}</small>`
+    : `Publish this file: <span class="ex">${esc(j.file_url)}</span><br>with exactly this content: <span class="ex">${esc(j.content)}</span><br>then click <em>Check status</em>.`;
+  return false; }
+async function checkClaim(){ if(!claimToken) return; let r;
+  if ($('claim_instructions').innerText.includes('Publish this file')) { r = await fetch(API+'/v1/claims/'+claimToken+'/check', {method:'POST'}); const j = await r.json(); if(!j.verified){ $('claim_status').textContent = j.error || 'not verified yet'; return; } }
+  r = await fetch(API+'/v1/claims/'+claimToken, {cache:'no-store'}); const j = await r.json();
+  if (j.status === 'verified') { ownerKey = j.owner_key; $('claim_status').textContent = 'verified ✓'; openManage(); }
+  else $('claim_status').textContent = `status: ${j.status}${j.attempts?` · ${j.attempts} non-matching attempt(s)`:''}`; }
+async function openManage(){ $('claim_manage').style.display='block'; $('manage_name').textContent = claimSlug; $('owner_key_show').textContent = ownerKey; try{ localStorage.setItem('bs_owner_'+claimSlug, ownerKey); }catch(e){}
+  try{ const b = await (await fetch(API+'/v1/bots/'+claimSlug)).json(); const f = document.querySelector('#claim_manage form'); f.display_name.value = b.display_name||''; f.operator.value = b.operator==='unknown'?'':b.operator; f.category.value = b.category||''; f.homepage.value = b.homepage||''; f.contact_url.value = b.contact_url||''; f.description.value = b.description||''; }catch(e){}
+  $('claim_manage').scrollIntoView({behavior:'smooth'}); }
+function useOwnerKey(){ claimSlug = slugOf($('claim_slug').value || new URLSearchParams(location.search).get('slug') || ''); ownerKey = $('owner_key_in').value.trim(); if(!claimSlug||!ownerKey){ $('claim_status').textContent='enter the bot slug (step 1 box) and your owner key'; $('claim_step2').style.display='block'; return; } openManage(); }
+async function saveBot(e){ e.preventDefault(); const f = new FormData(e.target); const body = Object.fromEntries([...f.entries()].filter(([k,v])=>k!=='category'||v)); if (!body.category) delete body.category;
+  const r = await fetch(API+'/v1/bots/'+claimSlug, {method:'PATCH', headers:{'content-type':'application/json','X-BS-Owner': ownerKey}, body: JSON.stringify(body)});
+  const j = await r.json(); const m = $('savemsg'); m.style.display='block'; m.textContent = r.ok ? `saved (${(j.updated||[]).join(', ')||'no changes'})` : (j.error || j.detail || 'error'); if (r.ok) refresh(); return false; }
+
 function requestKey(e){ e.preventDefault(); const f = new FormData(e.target); const body = `Site: ${f.get('site')}\nEmail: ${f.get('email')}\nStack: ${f.get('stack')||'-'}\n\nI own/administer this site and accept the Sensor Terms.`;
   location.href = 'mailto:hello@botspotter.app?subject=' + encodeURIComponent('BotSpotter sensor key: ' + f.get('site')) + '&body=' + encodeURIComponent(body);
   const m = $('keymsg'); m.style.display='block'; m.textContent = 'Opening your email client — send that message and we will reply with your key. If nothing opened, email hello@botspotter.app with your site name.'; return false; }

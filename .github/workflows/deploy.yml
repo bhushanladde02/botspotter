@@ -1,6 +1,6 @@
 # CD: every push to main that passes tests is deployed to the Oracle VM.
 #
-# One-time setup (see docs/cicd.md):
+# One-time setup (see docs/cicd.rst):
 #   gh secret set VM_SSH_KEY  < ~/.ssh/sharpen_vm
 #   gh secret set VM_HOST     --body 129.213.153.181
 #   gh secret set VM_USER     --body ubuntu
