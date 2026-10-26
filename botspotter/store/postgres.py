@@ -23,6 +23,19 @@ class PostgresStore(Store):
 
     async def start(self) -> None:
         self.pool = await asyncpg.create_pool(self.dsn, min_size=1, max_size=4)
+        await self._migrate()
+
+    async def _migrate(self) -> None:
+        """schema.sql runs only when the volume is created; db/migrations.sql holds
+        every change since and is idempotent, so running it on each boot is safe."""
+        from importlib import resources
+
+        sql = resources.files("botspotter.data").joinpath("migrations.sql").read_text()
+        async with self.pool.acquire() as con:
+            for stmt in [x.strip() for x in sql.split(";") if x.strip() and not x.strip().startswith("--")]:
+                body = "\n".join(l for l in stmt.splitlines() if not l.strip().startswith("--")).strip()
+                if body:
+                    await con.execute(body)
 
     async def stop(self) -> None:
         if self.pool:

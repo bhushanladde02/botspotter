@@ -99,8 +99,12 @@ def create_app(stream=None, enricher: Enricher | None = None) -> FastAPI:
             ref = str(body.get("ref") or ref)  # the page sends document.referrer (the HTTP Referer is the portal itself)
         except Exception:
             pass
+        h = request.headers
+        # City/region come from Cloudflare's free "Add visitor location headers" managed
+        # transform (docs/runbook.rst); absent locally, which is fine.
         visit = enricher.portal_visit(
-            client_ip(request), request.headers.get("user-agent", ""), request.headers.get("cf-ipcountry", ""), page, ref
+            client_ip(request), h.get("user-agent", ""), h.get("cf-ipcountry", ""), page, ref,
+            city=h.get("cf-ipcity", ""), region=h.get("cf-region-code", ""), accept_language=h.get("accept-language", ""),
         )
         await request.app.state.stream.publish(settings.topic_portal_visits, visit.visitor.encode(), visit.to_bytes())
         return Response(status_code=204)

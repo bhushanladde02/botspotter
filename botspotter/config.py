@@ -55,6 +55,9 @@ class Settings:
     # by UTC date; this is just a secret prefix so hashes can't be precomputed.
     visitor_secret: str = field(default_factory=lambda: _env("BS_VISITOR_SECRET", "change-me-in-prod"))
 
+    # Owner key for the audience ledger (/admin, /v1/admin/*). Unset = those routes 404.
+    admin_key: str = field(default_factory=lambda: _env("BS_ADMIN_KEY", ""))
+
     # New-bot discovery: unseen fingerprint on N distinct sites within window.
     discovery_min_sites: int = field(default_factory=lambda: _env_int("BS_DISCOVERY_MIN_SITES", 3))
     discovery_window_s: int = field(default_factory=lambda: _env_int("BS_DISCOVERY_WINDOW_S", 86400))

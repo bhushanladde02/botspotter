@@ -56,6 +56,32 @@ def referrer_source(referrer: str) -> str:
     return _SOURCE_ALIASES.get(host, host)[:60]
 
 
+_BROWSERS = (("Edg/", "Edge"), ("OPR/", "Opera"), ("SamsungBrowser", "Samsung Internet"), ("Firefox/", "Firefox"),
+             ("Chrome/", "Chrome"), ("CriOS/", "Chrome"), ("FxiOS/", "Firefox"), ("Safari/", "Safari"))
+_OSES = (("Windows", "Windows"), ("CrOS", "ChromeOS"), ("Android", "Android"), ("iPhone", "iOS"), ("iPad", "iPadOS"),
+         ("Mac OS X", "macOS"), ("Linux", "Linux"))
+
+
+def ua_client(ua: str) -> tuple[str, str, str]:
+    """(browser family, OS family, device class) from a browser User-Agent.
+    Deliberately coarse — no versions — it is for audience statistics, not identification."""
+    ua = ua or ""
+    browser = next((b for k, b in _BROWSERS if k in ua), "other")
+    os_ = next((o for k, o in _OSES if k in ua), "other")
+    if "iPad" in ua or ("Android" in ua and "Mobile" not in ua):
+        device = "tablet"
+    elif "Mobile" in ua or "iPhone" in ua or "Android" in ua:
+        device = "mobile"
+    else:
+        device = "desktop"
+    return browser, os_, device
+
+
+def first_language(accept_language: str) -> str:
+    tag = (accept_language or "").split(",")[0].split(";")[0].strip()
+    return tag[:12] if re.fullmatch(r"[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*", tag) else ""
+
+
 class Enricher:
     def __init__(self, geo: Geo | None = None, classifier: Classifier | None = None):
         self.geo = geo or Geo()
@@ -90,7 +116,8 @@ class Enricher:
             homepage=cls.homepage,
         )
 
-    def portal_visit(self, ip: str, ua: str, cf_country: str, page: str = "/", referrer: str = "") -> PortalVisit:
+    def portal_visit(self, ip: str, ua: str, cf_country: str, page: str = "/", referrer: str = "",
+                     city: str = "", region: str = "", accept_language: str = "") -> PortalVisit:
         """Human visit to the portal. The visitor hash is salted with the UTC
         date so the same person is one unique per day and unlinkable across
         days. The secret prefix stops offline precomputation."""
@@ -98,9 +125,11 @@ class Enricher:
         day = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%d")
         material = f"{settings.visitor_secret}\x1f{day}\x1f{ip}\x1f{ua}".encode()
         visitor = hashlib.blake2b(material, digest_size=12).hexdigest()
-        # Stable hash (no date) so "humans all time" counts a returning person once.
-        # It only ever enters a HyperLogLog (irreversible, no per-visitor record).
+        # Stable hash (no date) so "humans all time" counts a returning person once and
+        # the owner-only audience ledger can list a returning visitor as one row.
         stable = hashlib.blake2b(f"{settings.visitor_secret}\x1fall\x1f{ip}\x1f{ua}".encode(), digest_size=12).hexdigest()
         g = self.geo.lookup(ip, cf_country)
+        browser, os_, device = ua_client(ua)
         return PortalVisit(ts=ts, visitor=visitor, vs=stable, country=g.country, page=page[:64] or "/",
-                           ref=referrer_source(referrer))
+                           ref=referrer_source(referrer), city=(city or "")[:64], region=(region or g.region or "")[:32],
+                           browser=browser, os=os_, device=device, lang=first_language(accept_language))

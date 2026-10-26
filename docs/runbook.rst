@@ -119,6 +119,47 @@ Operations
 | Logs                                     | ``docker compose logs -f --tail 200 <service>``                                                                            |
 +------------------------------------------+----------------------------------------------------------------------------------------------------------------------------+
 
+Audience ledger (owner only)
+----------------------------
+
+``/admin`` lists every individual visitor (pseudonymous id, city, device, referrer, sessions, return visits) with CSV
+export; API: ``/v1/admin/visitors``, ``/v1/admin/visitors.csv``, ``/v1/admin/visits.csv`` (``X-BS-Admin`` header or
+``?key=``). What is stored and why: :doc:`privacy`.
+
+-  Key: ``BS_ADMIN_KEY`` in the VM's ``.env``. ``deploy/remote.sh`` generates it once if missing; copy it into
+   ``private/notes.md``. Unset → the routes 404. Rotate by editing ``.env`` and ``docker compose up -d api``.
+-  The key is entered on ``/admin`` and kept in ``sessionStorage`` only (gone when the tab closes). "Forget key" clears it.
+-  City/region require Cloudflare's free visitor-location headers: Cloudflare dashboard → botspotter.app → Rules →
+   Settings (Managed Transforms) → **Add visitor location headers** → On. Until then rows have country only.
+-  Schema changes: ``db/schema.sql`` runs only when the Postgres volume is created. Every later change goes in
+   ``botspotter/data/migrations.sql`` (idempotent ``IF NOT EXISTS`` statements), which ``PostgresStore.start()`` applies
+   on every boot of api and aggregator. ``tests/test_packaging.py`` checks the file ships in the wheel.
+
+Evidence routine (reach, for any future claim)
+----------------------------------------------
+
+Independent sources carry the weight; the ledger is the detailed companion. Set up once:
+
+1. **Cloudflare Web Analytics** (free, cookie-free): dashboard → Analytics & Logs → Web Analytics → Add a site →
+   botspotter.app → "Automatic setup" (Cloudflare injects the beacon at the edge; no code change). Shows visits, page
+   views, countries, referrers, paths; data from the day it is enabled.
+2. **Google Search Console**: https://search.google.com/search-console → Add property → Domain → ``botspotter.app`` →
+   verify with the TXT record it gives you (Cloudflare DNS → Records → add TXT at ``@``). Then Sitemaps → submit
+   ``https://botspotter.app/sitemap.xml``. Bing Webmaster Tools can import the Search Console property in one click.
+3. **Cloudflare zone analytics** (already on): dashboard → Analytics & Logs → Traffic — requests and unique visitors at
+   the edge (includes bots; useful as an upper bound).
+
+Monthly, first week of the month, into ``private/evidence/YYYY-MM/`` (gitignored with the rest of ``private/``):
+
+-  Cloudflare Web Analytics → date range = previous month → Export (CSV) and a screenshot of the overview;
+-  Search Console → Performance → previous month → Export → Google Sheets/CSV, plus a screenshot;
+-  ``https://botspotter.app/v1/stats/humans.csv`` (public daily aggregates) and, with the admin key,
+   ``/v1/admin/visitors.csv?days=1100`` and ``/v1/admin/visits.csv?days=1100``;
+-  ``gh api repos/bhushanladde02/botspotter`` → ``stargazers_count``, ``forks_count`` into a one-line note;
+-  any press, posts or citations (URL + archived copy via https://web.archive.org/save/).
+
+Each export is dated by the vendor, which is what makes it credible later; keep the originals unedited.
+
 Health checks
 -------------
 

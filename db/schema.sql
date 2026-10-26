@@ -70,15 +70,25 @@ SELECT add_continuous_aggregate_policy('events_daily_gh',
     start_offset => INTERVAL '7 days', end_offset => INTERVAL '1 hour',
     schedule_interval => INTERVAL '1 hour', if_not_exists => TRUE);
 
--- Portal visits (humans). Visitor hash rotates daily; nothing identifying.
+-- Portal visits (humans). Pseudonymous: salted hashes, no IP, no cookie. Owner-only
+-- audience ledger (docs/privacy.rst). botspotter/data/migrations.sql re-applies the newer columns on every boot.
 CREATE TABLE IF NOT EXISTS portal_visits (
     ts       TIMESTAMPTZ NOT NULL,
-    visitor  TEXT NOT NULL,
+    visitor  TEXT NOT NULL,              -- daily-rotating hash
     country  TEXT NOT NULL,
-    page     TEXT NOT NULL
+    page     TEXT NOT NULL,
+    vs       TEXT NOT NULL DEFAULT '',   -- stable hash: links a returning visitor's rows
+    ref      TEXT NOT NULL DEFAULT 'direct',
+    city     TEXT NOT NULL DEFAULT '',
+    region   TEXT NOT NULL DEFAULT '',
+    browser  TEXT NOT NULL DEFAULT '',
+    os       TEXT NOT NULL DEFAULT '',
+    device   TEXT NOT NULL DEFAULT '',
+    lang     TEXT NOT NULL DEFAULT ''
 );
 SELECT create_hypertable('portal_visits', 'ts', if_not_exists => TRUE, chunk_time_interval => INTERVAL '1 day');
-SELECT add_retention_policy('portal_visits', INTERVAL '90 days', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS portal_visits_vs_ts ON portal_visits (vs, ts DESC);
+SELECT add_retention_policy('portal_visits', INTERVAL '1100 days', if_not_exists => TRUE);
 
 -- Discovery log (feed history beyond Redis' capped list).
 CREATE TABLE IF NOT EXISTS discoveries (

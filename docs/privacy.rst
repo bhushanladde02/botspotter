@@ -16,15 +16,30 @@ Nothing. The IP is used in-process for (a) the ``/16`` network prefix of *unknow
 What is stored
 --------------
 
-``BotEvent`` / ``PortalVisit`` (see ``models.py``): timestamps, site id, fingerprint hash, name, UA family, operator/category, country, region, geohash, ``hit_robots``. In Postgres and Redis. That is all.
+``BotEvent`` (see ``models.py``): timestamps, site id, fingerprint hash, name, UA family, operator/category, country, region, geohash, ``hit_robots``. ``PortalVisit``: the pseudonymous human-visit row described under *Humans on the portal*. In Postgres and Redis. That is all.
 
 Humans on the portal
 --------------------
 
-Two salted hashes, both fed only into HyperLogLogs (irreversible, no per-visitor record):
+No IP address is stored and no cookie or browser identifier is set. Two salted hashes are derived in-process from
+``VISITOR_SECRET + ip + ua`` and the IP is then discarded:
 
--  daily: ``blake2b(VISITOR_SECRET + UTC-day + ip + ua)`` → "humans today / this week" and today's peak hour; rotates daily so visits can't be linked across days in any stored record;
--  stable: ``blake2b(VISITOR_SECRET + "all" + ip + ua)`` → the "humans all time" HLL only, so a returning person is counted once. It is never written to Postgres or any list; an HLL cannot be enumerated or reversed. Per-country and per-referrer-source views are counted (``bs:humans:country``, ``bs:humans:source``); the referrer is reduced to a domain label (``linkedin.com``, ``x.com``, ``direct``) — never the page or path, and our own domain is dropped. No cookie, no localStorage, no ID handed to the browser.
+-  daily: ``blake2b(secret + UTC-day + ip + ua)`` → "humans today / this week" HyperLogLogs and today's peak hour;
+   rotates daily so the public counters can't link days;
+-  stable: ``blake2b(secret + "all" + ip + ua)`` → the "humans all time" HLL **and** the owner-only audience ledger
+   (below). It cannot be reversed; the same person on a second device is a second id.
+
+**Audience ledger (since 2026-10-26).** Every portal page view is written to ``portal_visits`` as a pseudonymous row:
+timestamp, both hashes, country, city/region (from Cloudflare's visitor-location headers when enabled, else empty),
+page, referrer *domain* (``linkedin.com``, ``direct``; own domain → ``internal``), browser family, OS family, device
+class and first ``Accept-Language`` tag. Retention 1100 days. It is readable only with ``BS_ADMIN_KEY`` (``/admin``,
+``/v1/admin/*``; 404 without it, ``Disallow`` in robots.txt) and exists so the owner can show, with per-individual
+detail, how many real people use the site, from where, and how often they return — e.g. as evidence of reach. Public
+pages (``/stats``) expose aggregates only. §5 of ``/terms`` discloses exactly this; keep the two in sync.
+
+Why not raw IPs: they add legal exposure (GDPR/CCPA personal data, breach liability, access requests) and prove
+nothing an evaluator can verify. Third-party sources (Cloudflare Web Analytics, Search Console) are the strong evidence;
+the ledger is the detailed companion. See the runbook's "Evidence routine".
 
 .. _bots-are-not-people--but:
 
@@ -56,4 +71,4 @@ A verified claim stores a salted hash of the owner key and of the contact email 
 Presence and the audience report
 --------------------------------
 
-"Watching now" is the number of daily visitor hashes with a heartbeat in the last 90 seconds (``bs:humans:active``; entries older than an hour are dropped). The public ``/stats`` page and ``/v1/stats/humans`` expose only daily aggregates: views, unique humans (HyperLogLog), bot hits, top countries and referrer domains. Daily aggregates are retained for about three years so reach can be demonstrated over time; no per-visitor data is retained.
+"Watching now" is the number of daily visitor hashes with a heartbeat in the last 90 seconds (``bs:humans:active``; entries older than an hour are dropped). The public ``/stats`` page and ``/v1/stats/humans`` expose only daily aggregates: views, unique humans (HyperLogLog), bot hits, top countries and referrer domains, retained about three years. The per-visit rows behind them are the owner-only ledger described above.

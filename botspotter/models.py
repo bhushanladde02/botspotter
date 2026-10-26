@@ -59,12 +59,21 @@ class BotEvent(BaseModel):
 
 
 class PortalVisit(BaseModel):
+    """One human page view on the portal. Pseudonymous: no IP, no cookie, no id
+    handed to the browser. The stable hash ``vs`` links a returning visitor's
+    rows together in the owner-only audience ledger (docs/privacy.rst)."""
     ts: float
     visitor: str  # daily-salted hash; rotates every UTC day (today / this week uniques)
-    vs: str = ""  # stable salted hash (no date) — fed ONLY into the all-time HyperLogLog, never stored per visit
+    vs: str = ""  # stable salted hash of secret+ip+ua (no date): all-time HLL + the admin ledger
     country: str
     page: str = "/"
     ref: str = "direct"  # referrer DOMAIN only (linkedin.com, news.ycombinator.com, direct) — never a path
+    city: str = ""      # from Cloudflare's visitor-location headers or the mmdb; "" when unknown
+    region: str = ""    # region/state code
+    browser: str = ""   # Chrome / Safari / Firefox / Edge / ... (family only, no version)
+    os: str = ""        # macOS / Windows / iOS / Android / Linux / ChromeOS
+    device: str = ""    # desktop / mobile / tablet
+    lang: str = ""      # first Accept-Language tag, e.g. en-US
 
     def to_bytes(self) -> bytes:
         return orjson.dumps(self.model_dump())

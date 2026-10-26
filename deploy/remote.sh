@@ -35,6 +35,11 @@ else
   echo ".env exists, keeping it"
 fi
 NET=$(docker inspect "$CADDY_CONTAINER" -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' | head -1)
+# Added after the first deploy: generate once, keep forever (it is the owner's ledger key).
+if ! grep -q '^BS_ADMIN_KEY=' .env; then
+  echo "BS_ADMIN_KEY=$(openssl rand -hex 24)" >> .env
+  echo "generated BS_ADMIN_KEY — copy it from .env into private/notes.md (it opens /admin)"
+fi
 if grep -q '^CADDY_NETWORK=' .env; then sed -i "s|^CADDY_NETWORK=.*|CADDY_NETWORK=$NET|" .env; else echo "CADDY_NETWORK=$NET" >> .env; fi
 echo "caddy network: $NET"
 

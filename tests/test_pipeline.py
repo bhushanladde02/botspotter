@@ -24,7 +24,7 @@ def hits(ua, headers, ip, cc, n=1, path="/"):
 @pytest.fixture
 async def world(stream, store, counters, enricher):
     ingest = create_ingest(stream=stream, enricher=enricher)
-    api = create_api(counters=counters, stream=stream, enricher=enricher, self_sensor=True)
+    api = create_api(counters=counters, stream=stream, enricher=enricher, self_sensor=True, store=store, admin_key="adminkey")
     agg = Aggregator(stream=stream, store=store, counters=counters)
     async with ingest.router.lifespan_context(ingest), api.router.lifespan_context(api):
         ic = httpx.AsyncClient(transport=httpx.ASGITransport(app=ingest), base_url="http://ingest")

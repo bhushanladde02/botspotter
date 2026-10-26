@@ -26,3 +26,8 @@ class Store(ABC):
 
     @abstractmethod
     async def record_discoveries(self, items: list[dict]) -> None: ...
+
+    async def visits_since(self, since_ts: float, limit: int = 200_000) -> list[PortalVisit]:
+        """Raw visit rows newest first, for the owner-only audience ledger. Memory
+        store returns what it holds; Postgres reads portal_visits."""
+        return []

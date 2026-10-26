@@ -115,6 +115,8 @@
   .about input,.about textarea{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;font:inherit;font-size:14px}
   .about label.chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--muted)}
   .about button{background:var(--acid);color:#07090f;border:0;font-weight:700;padding:11px 16px;border-radius:10px;cursor:pointer;font-size:14px}
+  .about select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;font:inherit}
+  .about button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:500}
   .about button:disabled{opacity:.4;cursor:not-allowed}
   body.about-mode .hero,body.about-mode .tiles:not(.st),body.about-mode .cats,body.about-mode .ticker,body.about-mode #map,body.about-mode .grid{display:none}
   
@@ -195,7 +197,7 @@
   <p>Operators can <a href="/claim" onclick="return go('/claim')">claim their bot</a>: prove control (make the bot fetch a one-time URL, or publish a token on its homepage), then give it a proper name, description and category. Claimed bots carry a ✓ and the generated name stays as an alias.</p>
 
   <h2>What we don't do</h2>
-  <p>We don't store IP addresses, page contents, or anything about human visitors beyond a daily count. Bots are named by a hash, never exposed. Humans are counted without cookies. The numbers here are visits seen by participating sites, not &ldquo;the whole internet&rdquo; &mdash; the more sensors join, the closer it gets.</p>
+  <p>We don't store IP addresses or page contents, and we set no cookies. Human visits to this portal are recorded pseudonymously (a one-way hash, country/city, browser family, referring domain) so the owner can see how many real people come here and from where; see the <a href="/terms" onclick="return go('/terms')">privacy section</a>. Bots are named by a hash, never exposed. The numbers here are visits seen by participating sites, not &ldquo;the whole internet&rdquo; &mdash; the more sensors join, the closer it gets.</p>
 
   <div class="tagline">Same bot. Same name. Forever.</div><br>
   <a class="cta" href="/sensors" onclick="return go('/sensors')">Add your site as a sensor &rarr;</a>
@@ -250,7 +252,7 @@ BOTSPOTTER_KEY = "YOUR_KEY"</pre>
 
 <section class="about" id="page-terms">
   <h1>Sensor Terms &amp; Privacy</h1>
-  <p class="note">Plain-English summary first; the terms follow. Effective 25 Oct 2026. These apply to anyone who installs a BotSpotter sensor or uses the BotSpotter API. Just looking at the site? Only the Privacy section concerns you.</p>
+  <p class="note">Plain-English summary first; the terms follow. Effective 25 Oct 2026; privacy section (&sect;5, human visitors) updated 26 Oct 2026. These apply to anyone who installs a BotSpotter sensor or uses the BotSpotter API. Just looking at the site? Only the Privacy section concerns you.</p>
 
   <h2>Summary</h2>
   <ul>
@@ -282,8 +284,8 @@ BOTSPOTTER_KEY = "YOUR_KEY"</pre>
   <p><strong>Sent by the sensor, per request your server judges to be automated:</strong> the names (not values) of the request headers in order; the User-Agent string; the client IP address; the <span class="ex">CF-IPCountry</span> header if present; HTTP method and status code; the timestamp; and a flag for whether the path was <span class="ex">robots.txt</span>. Requests that look like ordinary browsers are filtered on your server and not sent. No page content, cookies, header values, query strings, form data, or other paths are sent.</p>
   <p><strong>Processed on arrival and then discarded:</strong> the IP address. We use it in memory to derive (a) a country and approximate region, and (b) for unidentified bots only, a coarse network prefix (/16, up to 65,536 addresses) that becomes part of the bot's fingerprint hash. The address itself is never written to disk, logs, or backups.</p>
   <p><strong>Stored:</strong> timestamp, your site id, the bot's fingerprint hash and derived name, a version-stripped User-Agent family, bot operator and category, country, region, a coarse geohash, and the robots.txt flag. Raw events are kept 90 days; hourly aggregates indefinitely.</p>
-  <p><strong>Human visitors to this portal:</strong> we count unique visitors using salted hashes of IP and User-Agent that are fed only into HyperLogLog counters (a probabilistic structure that cannot be reversed or enumerated). The daily hash includes the date and powers &ldquo;today&rdquo; and &ldquo;this week&rdquo;; a second hash without the date powers &ldquo;all time&rdquo; so a returning person is counted once. We also count visits per country and per referring <em>domain</em> (e.g. linkedin.com, &ldquo;direct&rdquo;) &mdash; never the referring page or path. No per-visitor record is written anywhere. No cookies, no local storage identifiers, no third-party analytics scripts.</p>
-  <p><strong>Legal basis (where GDPR/UK GDPR applies):</strong> legitimate interest in measuring automated traffic. We have designed the processing so that no personal data is retained; the IP address is processed transiently for seconds. If you believe a stored record identifies you, email us and we will remove it.</p>
+  <p><strong>Human visitors to this portal:</strong> we do not store your IP address and we set no cookie or browser identifier. Each page view is recorded as a <em>pseudonymous</em> visit: a salted hash of your IP and browser (the hash cannot be turned back into either; the salt is a server secret), the country and, when our CDN supplies it, the city; the page viewed; the referring <em>domain</em> (e.g. linkedin.com, &ldquo;direct&rdquo;) &mdash; never the referring page; your browser family, operating system, device class and preferred language. These rows are kept for up to three years, are visible only to the site owner, are used solely to understand and demonstrate the site&rsquo;s audience (how many people, from where, how often they return), and are never sold or shared individually. Public pages show aggregates only. A daily-rotating hash additionally powers the public &ldquo;humans today / this week&rdquo; counters. We may also use Cloudflare Web Analytics, a cookie-free, privacy-preserving service of our CDN, for the same purpose.</p>
+  <p><strong>Legal basis (where GDPR/UK GDPR applies):</strong> legitimate interest in measuring automated traffic and in understanding the portal&rsquo;s own audience. The IP address is processed transiently for seconds and never retained; what is retained is pseudonymous and coarse by design. If you believe a stored record identifies you, email us and we will remove it.</p>
 
   <h2>6. Published data and your site id</h2>
   <p>Your site id (the name you choose when requesting a key) appears publicly on the sensor leaderboard with its hit counts. Choose a name you're comfortable publishing. Aggregated statistics and bot profiles we publish are licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>; attribute &ldquo;BotSpotter&rdquo;.</p>
@@ -370,7 +372,37 @@ BOTSPOTTER_KEY = "YOUR_KEY"</pre>
   </div>
   <h2>Day by day</h2>
   <div class="recent" style="max-height:360px" id="st_table"></div>
-  <p class="note" style="margin-top:16px">Method: a visitor is one unique per UTC day (salted hash of IP + browser, HyperLogLog ±1%); "all time" uses a date-free hash so returning visitors count once. Bots are excluded by User-Agent/header heuristics and never count as humans. Daily aggregates are retained three years.</p>
+  <p class="note" style="margin-top:16px">Method: a visitor is one unique per UTC day (salted hash of IP + browser, HyperLogLog ±1%); "all time" uses a date-free hash so returning visitors count once. Bots are excluded by User-Agent/header heuristics and never count as humans. Daily aggregates are public and retained three years; the per-visit detail behind them (pseudonymous, no IP) is visible to the site owner only.</p>
+</section>
+
+<section class="about" id="page-admin">
+  <h1>Audience ledger</h1>
+  <p class="m">Owner view. One row per individual visitor: pseudonymous id (salted hash — no IP is stored anywhere), where from, device, how they arrived, how often they came back. Not linked from the site; <span class="ex">robots.txt</span> disallows it.</p>
+  <form id="adm_form" onsubmit="return admLogin(event)" style="display:flex;gap:8px;align-items:center;margin:14px 0">
+    <input id="adm_key" type="password" placeholder="admin key (BS_ADMIN_KEY)" style="flex:1;max-width:360px" autocomplete="current-password">
+    <select id="adm_days"><option value="30">30 days</option><option value="90" selected>90 days</option><option value="365">1 year</option><option value="1100">3 years</option></select>
+    <button type="submit">Open</button><button type="button" onclick="admLogout()" class="ghost">Forget key</button>
+  </form>
+  <div id="adm_msg" class="note" style="display:none"></div>
+  <div id="adm_body" style="display:none">
+    <div class="tiles st" style="padding:0;max-width:none;margin:14px 0">
+      <div class="tile humans"><b id="adm_visitors">—</b><small>individual visitors</small></div>
+      <div class="tile humans"><b id="adm_returning">—</b><small>came back on another day</small></div>
+      <div class="tile humans"><b id="adm_sessions">—</b><small>sessions (30-min rule)</small></div>
+      <div class="tile humans"><b id="adm_views">—</b><small>page views</small></div>
+      <div class="tile humans"><b id="adm_cities">—</b><small>cities</small></div>
+    </div>
+    <p class="m">Export: <a id="adm_csv1" href="#">visitors.csv</a> · <a id="adm_csv2" href="#">every visit.csv</a> · <a id="adm_json" href="#">JSON</a>. Keep the monthly exports with the Cloudflare and Search Console reports (runbook → "Evidence routine").</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:6px">
+      <div><h2 style="margin-top:0">Cities</h2><div id="adm_city"></div></div>
+      <div><h2 style="margin-top:0">Arrived from</h2><div id="adm_src"></div></div>
+      <div><h2 style="margin-top:0">Devices</h2><div id="adm_dev"></div></div>
+      <div><h2 style="margin-top:0">Languages</h2><div id="adm_lang"></div></div>
+    </div>
+    <h2>Visitors · most recent first</h2>
+    <div class="recent" style="max-height:620px" id="adm_table"></div>
+    <p class="note" id="adm_method" style="margin-top:16px"></p>
+  </div>
 </section>
 
 <div class="modal" id="modal"><div class="box">
@@ -612,11 +644,12 @@ function shareX(){ const t = encodeURIComponent(`I just found ${$('m_name').text
 $('modal').addEventListener('click', e => { if(e.target.id==='modal') closeModal(); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
 function go(path){ history.pushState(null,'',path); route(); window.scrollTo(0,0); return false; }
-const PAGES = {'/about':'page-about','/sensors':'page-sensors','/terms':'page-terms','/claim':'page-claim','/stats':'page-stats'};
+const PAGES = {'/about':'page-about','/sensors':'page-sensors','/terms':'page-terms','/claim':'page-claim','/stats':'page-stats','/admin':'page-admin'};
 function route(){ const page = PAGES[location.pathname] || null; document.body.classList.toggle('about-mode', !!page);
   for (const id of Object.values(PAGES)) $(id).style.display = page===id ? 'block' : 'none';
   $('nav_about').classList.toggle('on', page==='page-about'); $('nav_sensors').classList.toggle('on', page==='page-sensors'||page==='page-terms'); $('nav_claim').classList.toggle('on', page==='page-claim'); $('nav_stats').classList.toggle('on', page==='page-stats'); $('nav_live').classList.toggle('on', !page);
   if (page==='page-stats') loadStats();
+  if (page==='page-admin') admInit();
   if (page==='page-claim') { const q = new URLSearchParams(location.search).get('slug'); if (q) $('claim_slug').value = q; }
   if (!page && map) setTimeout(()=>map.resize(), 50); }
 // ---------- claim your bot
@@ -654,6 +687,24 @@ async function loadStats(){ try{
   $('st_table').innerHTML = r.daily.slice().reverse().filter(d=>d.views).map(d=>`<div class="row"><span class="n">${d.date}</span><span class="m">${fmt(d.unique_humans)} humans · ${fmt(d.views)} views · ${fmt(d.bot_hits)} bot hits · ${d.top_countries.map(([c,n])=>flag(c)+' '+n).join(' ')}</span></div>`).join('') || '<div class="row m">no days yet</div>';
 }catch(e){ console.error('stats', e); } }
 
+// ---------- owner-only audience ledger (/admin). Key lives in sessionStorage only.
+function admKey(){ try{ return sessionStorage.getItem('bs_admin')||''; }catch(e){ return ''; } }
+function admInit(){ if (admKey()) loadAdmin(); }
+function admLogin(e){ e.preventDefault(); const k=$('adm_key').value.trim(); if(!k) return false; try{ sessionStorage.setItem('bs_admin',k); }catch(_){} $('adm_key').value=''; loadAdmin(); return false; }
+function admLogout(){ try{ sessionStorage.removeItem('bs_admin'); }catch(_){} $('adm_body').style.display='none'; $('adm_msg').style.display='none'; }
+function when(iso){ const d=new Date(iso); return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}); }
+async function loadAdmin(){ const key=admKey(), days=$('adm_days').value, msg=$('adm_msg'); if(!key) return;
+  msg.style.display='none';
+  const r = await fetch(API+'/v1/admin/visitors?days='+days, {headers:{'X-BS-Admin':key}});
+  if (r.status!==200){ msg.style.display='block'; msg.textContent = r.status===404 ? 'Not accepted. Either the key is wrong or BS_ADMIN_KEY is not set on the server (runbook → "Audience ledger").' : 'Error '+r.status; $('adm_body').style.display='none'; return; }
+  const led = await r.json(), s = led.summary; $('adm_body').style.display='block';
+  $('adm_visitors').textContent=fmt(s.visitors); $('adm_returning').textContent=fmt(s.returning_visitors); $('adm_sessions').textContent=fmt(s.sessions); $('adm_views').textContent=fmt(s.views); $('adm_cities').textContent=fmt(s.cities.length);
+  const q = `?days=${days}&key=${encodeURIComponent(key)}`; $('adm_csv1').href=API+'/v1/admin/visitors.csv'+q; $('adm_csv2').href=API+'/v1/admin/visits.csv'+q; $('adm_json').href=API+'/v1/admin/visitors'+q;
+  const kv=(el,items,color)=>rows($(el), items, ([k,n])=>`<div class="row"><span class="n">${esc(k||'unknown')}</span><span class="h" style="color:var(--${color})">${fmt(n)}</span></div>`);
+  kv('adm_city', s.cities, 'pink'); kv('adm_src', s.sources, 'cyan'); kv('adm_dev', s.devices.concat(s.browsers.slice(0,3), s.os.slice(0,3)), 'lime'); kv('adm_lang', s.languages, 'pink');
+  $('adm_table').innerHTML = led.visitors.map(v=>`<div class="row" style="align-items:flex-start"><span><span class="n">${flag(v.country)} ${esc(v.city||v.country)} <span class="m">· ${esc(v.id)}</span>${v.returning?' <span class="tag agent">returning</span>':''}</span><div class="m">${esc(v.browser)} · ${esc(v.os)} · ${esc(v.device)}${v.lang?' · '+esc(v.lang):''} · from ${esc(v.first_ref)} · ${v.pages.map(([p,n])=>esc(p)+'×'+n).join(' ')}</div></span><span class="m" style="text-align:right;white-space:nowrap">${when(v.last_seen)}<br>${v.sessions} session${v.sessions>1?'s':''} · ${v.views} views · ${v.days_active} day${v.days_active>1?'s':''}<br><span style="opacity:.6">first ${when(v.first_seen)}</span></span></div>`).join('') || '<div class="row m">no visits in this window</div>';
+  $('adm_method').textContent = 'Method: ' + s.method + '. Generated ' + led.generated_at + '.';
+}
 function requestKey(e){ e.preventDefault(); const f = new FormData(e.target); const body = `Site: ${f.get('site')}\nEmail: ${f.get('email')}\nStack: ${f.get('stack')||'-'}\n\nI own/administer this site and accept the Sensor Terms.`;
   location.href = 'mailto:hello@botspotter.app?subject=' + encodeURIComponent('BotSpotter sensor key: ' + f.get('site')) + '&body=' + encodeURIComponent(body);
   const m = $('keymsg'); m.style.display='block'; m.textContent = 'Opening your email client — send that message and we will reply with your key. If nothing opened, email hello@botspotter.app with your site name.'; return false; }

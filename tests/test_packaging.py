@@ -15,5 +15,5 @@ def test_wheel_ships_data_files(tmp_path):
                    check=True, capture_output=True)
     wheel = next(tmp_path.glob("botspotter-*.whl"))
     names = set(zipfile.ZipFile(wheel).namelist())
-    for f in ("botspotter/data/__init__.py", "botspotter/data/known_bots.json", "botspotter/data/country_centroids.json"):
+    for f in ("botspotter/data/__init__.py", "botspotter/data/known_bots.json", "botspotter/data/country_centroids.json", "botspotter/data/migrations.sql"):
         assert f in names, f"{f} missing from wheel"

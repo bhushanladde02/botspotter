@@ -29,3 +29,8 @@ class MemoryStore(Store):
 
     async def record_discoveries(self, items: list[dict]) -> None:
         self.discoveries.extend(items)
+
+    async def visits_since(self, since_ts: float, limit: int = 200_000) -> list[PortalVisit]:
+        rows = [v for v in self.visits if v.ts >= since_ts]
+        rows.sort(key=lambda v: v.ts, reverse=True)
+        return rows[:limit]

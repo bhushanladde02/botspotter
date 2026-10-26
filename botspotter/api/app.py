@@ -24,17 +24,22 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query, Request
+import hmac
+import time
+
 import orjson
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from ..config import settings
 from ..avatar import avatar_svg
+from ..audience import build_ledger, ledger_csv, visits_csv
 from ..claims import Claims
 from ..counters import Counters
 from ..enrich import Enricher
 from ..models import SensorHit
+from ..store import make_store
 from ..stream import make_stream
 
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
@@ -42,15 +47,19 @@ PORTAL_SITE = "botspotter-portal"
 
 
 def create_app(counters: Counters | None = None, stream=None, enricher: Enricher | None = None,
-               self_sensor: bool = True) -> FastAPI:
+               self_sensor: bool = True, store=None, admin_key: str | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.counters = counters or Counters.from_url()
         app.state.stream = stream or make_stream()
+        app.state.store = store or make_store()
         app.state.enricher = enricher or Enricher()
         app.state.claims = Claims(app.state.counters)
+        app.state.admin_key = settings.admin_key if admin_key is None else admin_key
         await app.state.stream.start()
+        await app.state.store.start()
         yield
+        await app.state.store.stop()
         await app.state.stream.stop()
 
     app = FastAPI(title="BotSpotter API", lifespan=lifespan)
@@ -170,7 +179,7 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
     @app.get("/robots.txt")
     async def robots():
         # We WANT bots here: that is the product. Everyone is welcome; please come often.
-        body = "User-agent: *\nAllow: /\nSitemap: https://botspotter.app/sitemap.xml\n\n# Hello, bot. You are being counted — and named. See /claim to claim your name.\n"
+        body = "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /v1/admin/\nSitemap: https://botspotter.app/sitemap.xml\n\n# Hello, bot. You are being counted — and named. See /claim to claim your name.\n"
         return Response(body, media_type="text/plain", headers={"Cache-Control": "public, max-age=3600"})
 
     @app.get("/sitemap.xml")
@@ -242,6 +251,37 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
         return Response("\n".join(lines) + "\n", media_type="text/csv",
                         headers={"Content-Disposition": "attachment; filename=botspotter-audience.csv", "Cache-Control": "public, max-age=300"})
 
+    # ---- owner-only audience ledger -------------------------------------------------
+    def _admin(request: Request, key: str = "") -> None:
+        """404 (not 401) when no key is configured or it doesn't match: the route's
+        existence is not advertised. Header for the page, ?key= for CSV downloads."""
+        want = request.app.state.admin_key
+        got = request.headers.get("x-bs-admin") or key
+        if not want or not got or not hmac.compare_digest(got, want):
+            raise HTTPException(404, "not found")
+
+    async def _visits(request: Request, days: int):
+        return await request.app.state.store.visits_since(time.time() - days * 86400)
+
+    @app.get("/v1/admin/visitors")
+    async def admin_visitors(request: Request, days: int = Query(90, ge=1, le=1100), key: str = ""):
+        _admin(request, key)
+        return Response(orjson.dumps(build_ledger(await _visits(request, days), days)), media_type="application/json",
+                        headers={"Cache-Control": "private, no-store"})
+
+    @app.get("/v1/admin/visitors.csv")
+    async def admin_visitors_csv(request: Request, days: int = Query(1100, ge=1, le=1100), key: str = ""):
+        _admin(request, key)
+        body = ledger_csv(build_ledger(await _visits(request, days), days))
+        return Response(body, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=botspotter-visitors.csv",
+                                                              "Cache-Control": "private, no-store"})
+
+    @app.get("/v1/admin/visits.csv")
+    async def admin_visits_csv(request: Request, days: int = Query(1100, ge=1, le=1100), key: str = ""):
+        _admin(request, key)
+        return Response(visits_csv(await _visits(request, days)), media_type="text/csv",
+                        headers={"Content-Disposition": "attachment; filename=botspotter-visits.csv", "Cache-Control": "private, no-store"})
+
     @app.get("/v1/sensors")
     async def sensors(request: Request, limit: int = Query(20, le=100)):
         return cached({"sensors": await request.app.state.counters.top_sensors(limit)}, 30)
@@ -256,6 +296,7 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
         @app.get("/terms")
         @app.get("/claim")
         @app.get("/stats")
+        @app.get("/admin")
         async def static_page():
             return FileResponse(WEB_DIR / "index.html", headers={"Cache-Control": "public, max-age=60"})
 

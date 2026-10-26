@@ -128,3 +128,23 @@ Redis key layout
 ----------------
 
 Documented in the module docstring of :mod:`botspotter.counters`.
+
+Owner-only endpoints
+--------------------
+
+Require ``BS_ADMIN_KEY`` (``X-BS-Admin`` header, or ``?key=`` for downloads); 404 when unset or wrong. Never cached.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Endpoint
+     - Returns
+   * - ``GET /v1/admin/visitors?days=N``
+     - audience ledger: ``summary`` (visitors, returning, sessions, views, cities, sources, browsers, OS, devices, languages, pages, daily) and ``visitors[]`` — one row per pseudonymous visitor (id, first/last seen, days active, sessions, views, country, city, browser, OS, device, language, first referrer, pages)
+   * - ``GET /v1/admin/visitors.csv?days=N``
+     - the ``visitors[]`` rows as CSV
+   * - ``GET /v1/admin/visits.csv?days=N``
+     - every page view (newest first) as CSV: ts, visitor id, country, region, city, page, referrer, browser, os, device, lang
+
+A session is a run of views by one visitor with gaps under 30 minutes (Google Analytics' definition). No IP appears in any of these.
