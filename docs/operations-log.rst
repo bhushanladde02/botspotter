@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 09:30
+     - **Incident**: counters frozen 10.6 h (snapshot ts stuck at 05:37 UTC, right after the 22:35 deploy). Aggregator crash-looped: ``ModuleNotFoundError: botspotter.data`` from ``geo.py`` — ``botspotter/data/`` had no ``__init__.py`` so the wheel never shipped it; ingest/api survived only because granian imports the ``/app`` source tree. Fix: ``data/__init__.py`` + ``[tool.setuptools.package-data]``; new ``tests/test_packaging.py`` inspects a built wheel; ``remote.sh`` smoke now also requires a fresh snapshot (<10 s) and an ``Up`` aggregator 6 s later. No data lost (Redis/Postgres untouched; Redpanda retained the backlog, replayed on restart)
+     - Bhushan
    * - 2026-10-25 22:35
      - Fix: hover-to-locate was slow (a request per hover) and sometimes dead (lists re-rendered every 2 s under the cursor). Snapshot now carries ``places`` for top bots/feed and lat/lon for ticker sightings, hover is instant; lists only re-render when changed and never while hovered; 150 ms hover-intent before the camera moves (sweeping the list = one move, not one per row), 180 ms leave grace; country-centroid fallback for bots without cell history
      - Bhushan

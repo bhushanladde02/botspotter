@@ -123,6 +123,15 @@ Health checks
 -------------
 
 -  ``GET /healthz`` on api and ingest. ``bs:snapshot.ts`` older than 10 s → aggregator is stuck.
+-  **Counter frozen / page says "live · <old time>"**: the page renders whatever snapshot the aggregator last wrote, so a
+   stale clock in the status line means the aggregator is down even though api and ingest answer. On the VM::
+
+      ssh -i ~/.ssh/sharpen_vm ubuntu@<vm> 'cd ~/botspotter && docker compose -f docker-compose.yml -f docker-compose.vm.yml ps && docker compose -f docker-compose.yml -f docker-compose.vm.yml logs --tail 60 aggregator'
+
+   ``Restarting (1)`` + a traceback names the line. Nothing is lost while it is down: Redpanda keeps the backlog and the
+   aggregator replays it when it comes back. The deploy smoke test now fails on this condition (snapshot age > 10 s or
+   aggregator not ``Up`` six seconds after the smoke hit). First occurrence: 2026-10-26, missing package data (see the
+   operations log).
 -  ``rpk cluster health`` must say ``Healthy: true``.
 -  Redis ``INFO memory`` ``used_memory`` < 230 MB (eviction is ``noeviction``; a full Redis makes the aggregator error).
 

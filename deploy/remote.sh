@@ -85,6 +85,18 @@ if [ "$AFTER" -le "$BEFORE" ]; then
   $COMPOSE exec -T redpanda rpk group describe aggregator || true
   exit 1
 fi
+# The aggregator must also still be alive and writing snapshots a little later: on
+# 2026-10-26 it counted the smoke hit, then died in write_snapshot() on every loop
+# (missing package data) and the site showed a frozen snapshot for 10 hours.
+sleep 6
+AGE=$($COMPOSE exec -T api python -c "import urllib.request,json,time;print(int(time.time()-json.load(urllib.request.urlopen('http://localhost:8000/v1/snapshot'))['ts']))")
+STATE=$($COMPOSE ps --format '{{.Service}} {{.Status}}' | awk '$1=="aggregator"{print $2}')
+echo "snapshot age=${AGE}s aggregator=$STATE"
+if [ "$AGE" -gt 10 ] || [ "$STATE" != "Up" ]; then
+  echo "!! aggregator is not writing snapshots — last 40 log lines:"
+  $COMPOSE logs --tail 40 aggregator
+  exit 1
+fi
 echo "pipeline OK (ingest -> redpanda -> aggregator -> redis -> api)"
 
 step "6b/7 nightly backup cron"

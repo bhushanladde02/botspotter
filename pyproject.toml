@@ -39,6 +39,9 @@ botspotter-aggregator = "botspotter.aggregator.run:main"
 [tool.setuptools.packages.find]
 include = ["botspotter*"]
 
+[tool.setuptools.package-data]
+"botspotter.data" = ["*.json"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
