@@ -100,25 +100,37 @@ done
 $COMPOSE ps --format 'table {{.Name}}\t{{.Status}}'
 
 step "5/7 caddy site block"
-# Sharpen's Caddy mounts its config dir at /etc/caddy and a drop-in dir at /etc/caddy/extra.
-CADDY_DIR=$(docker inspect "$CADDY_CONTAINER" -f '{{range .Mounts}}{{if eq .Destination "/etc/caddy"}}{{.Source}}{{end}}{{end}}')
-EXTRA_DIR=$(docker inspect "$CADDY_CONTAINER" -f '{{range .Mounts}}{{if eq .Destination "/etc/caddy/extra"}}{{.Source}}{{end}}{{end}}')
-if [ -z "$EXTRA_DIR" ]; then EXTRA_DIR="$CADDY_DIR/extra"; mkdir -p "$EXTRA_DIR"; fi
-echo "caddy dir: $CADDY_DIR  drop-ins: $EXTRA_DIR"
-if ! grep -qE 'import +extra' "$CADDY_DIR/Caddyfile"; then
-  cp "$CADDY_DIR/Caddyfile" "$CADDY_DIR/Caddyfile.bak.$(date +%Y%m%d%H%M%S)"
-  printf '\n# drop-in sites (added by botspotter/deploy/remote.sh)\nimport extra/*\n' >> "$CADDY_DIR/Caddyfile"
-  echo "added 'import extra/*' to Caddyfile (backup kept)"
+# Sharpen's Caddy bind-mounts its Caddyfile as a single FILE (host deploy/Caddyfile ->
+# /etc/caddy/Caddyfile) and the drop-in dir as /etc/caddy/extra. Resolve both from the
+# container's mounts; an older version of this step looked for a /etc/caddy directory
+# mount, found nothing, and silently never copied the drop-in (2026-10-26).
+mount_src() { docker inspect "$CADDY_CONTAINER" -f "{{range .Mounts}}{{if eq .Destination \"$1\"}}{{.Source}}{{end}}{{end}}"; }
+CADDYFILE=$(mount_src /etc/caddy/Caddyfile)
+[ -n "$CADDYFILE" ] || { d=$(mount_src /etc/caddy); [ -n "$d" ] && CADDYFILE="$d/Caddyfile"; }
+[ -n "$CADDYFILE" ] && [ -f "$CADDYFILE" ] || { echo "cannot find the host path of the Caddyfile mounted in $CADDY_CONTAINER"; exit 1; }
+EXTRA_DIR=$(mount_src /etc/caddy/extra)
+if [ -z "$EXTRA_DIR" ]; then EXTRA_DIR="$(dirname "$CADDYFILE")/extra"; mkdir -p "$EXTRA_DIR"; fi
+echo "caddyfile: $CADDYFILE  drop-ins: $EXTRA_DIR"
+if ! grep -qE '^\s*import +(/etc/caddy/)?extra/' "$CADDYFILE"; then
+  cp "$CADDYFILE" "$CADDYFILE.bak.$(date +%Y%m%d%H%M%S)"
+  printf '\n# drop-in sites (added by botspotter/deploy/remote.sh)\nimport /etc/caddy/extra/*.caddy\n' >> "$CADDYFILE"
+  echo "added 'import /etc/caddy/extra/*.caddy' to the Caddyfile (backup kept)"
 fi
 # Always install + reload (cheap, idempotent) and prove the running config carries our
 # settings — on 2026-10-26 the retry block silently never reached the running Caddy.
+[ -f "$EXTRA_DIR/botspotter.caddy" ] && cp "$EXTRA_DIR/botspotter.caddy" "$EXTRA_DIR/botspotter.caddy.prev"
 cp deploy/Caddyfile.botspotter "$EXTRA_DIR/botspotter.caddy"
-docker exec "$CADDY_CONTAINER" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
+if ! docker exec "$CADDY_CONTAINER" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null; then
+  echo "!! new site block does not validate — restoring the previous drop-in, Caddy untouched"
+  [ -f "$EXTRA_DIR/botspotter.caddy.prev" ] && cp "$EXTRA_DIR/botspotter.caddy.prev" "$EXTRA_DIR/botspotter.caddy"
+  exit 1
+fi
 docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 if docker exec "$CADDY_CONTAINER" caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile 2>/dev/null | grep -q '"try_duration"'; then
   echo "site block installed + caddy reloaded (retry-through-recreate active)"
 else
-  echo "!! caddy reloaded but the botspotter block is NOT in the running config — check 'import' in $CADDY_DIR/Caddyfile"
+  echo "!! caddy reloaded but the botspotter block is NOT in the running config — check 'import' in $CADDYFILE"
+  exit 1
 fi
 
 step "6/7 smoke test (end to end through the real pipeline)"
