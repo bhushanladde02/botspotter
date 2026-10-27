@@ -123,6 +123,14 @@
   .about input,.about textarea{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;font:inherit;font-size:14px}
   .about label.chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--muted)}
   .about button{background:var(--acid);color:#07090f;border:0;font-weight:700;padding:11px 16px;border-radius:10px;cursor:pointer;font-size:14px}
+  .tile small.sub{display:block;margin-top:4px;font-size:10px;color:var(--muted);opacity:.8;letter-spacing:0;text-transform:none}
+  .axis{display:flex;justify-content:space-between;font-size:10px;margin:2px 0 6px}
+  .tip{position:absolute;pointer-events:none;display:none;background:rgba(7,9,15,.95);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:11px var(--mono);color:var(--text);white-space:nowrap;z-index:3}
+  .kstats{margin-top:10px;font-size:12px;line-height:1.5}
+  .kstats b{color:var(--text)}
+  .kstats .sharebar{display:flex;height:8px;border-radius:5px;overflow:hidden;margin:8px 0 6px;background:#141a2c}
+  .kstats .sharebar span{display:block;height:100%}
+  .kstats .up{color:var(--acid)} .kstats .down{color:#ff8a8a}
   .ltools{display:flex;gap:6px;margin:0 0 8px}
   .ltools input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--text);padding:5px 8px;border-radius:7px;font:11px var(--mono)}
   .ltools select{background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:5px 6px;border-radius:7px;font:11px var(--mono)}
@@ -158,11 +166,11 @@
 </section>
 
 <div class="tiles">
-  <div class="tile bots"><b id="today">—</b><small>bot hits today</small></div>
-  <div class="tile bots"><b id="hour">—</b><small>this hour</small></div>
+  <div class="tile bots"><b id="today">—</b><small>bot hits · last 24 h</small><small class="sub" id="today_sub"></small></div>
+  <div class="tile bots"><b id="hour">—</b><small>this hour</small><small class="sub" id="hour_sub"></small></div>
   <div class="tile bots"><b id="discovered">—</b><small>bots discovered</small></div>
-  <div class="tile humans"><b id="humans_today">—</b><small>humans today</small></div>
-  <div class="tile humans"><b id="humans_week">—</b><small>humans this week</small></div>
+  <div class="tile humans"><b id="humans_today">—</b><small>humans · last 24 h</small><small class="sub" id="humans_today_sub"></small></div>
+  <div class="tile humans"><b id="humans_week">—</b><small>humans · last 7 days</small></div>
   <div class="tile humans"><b id="humans_all">—</b><small>humans all time</small></div>
 </div>
 
@@ -175,7 +183,12 @@
 </div>
 
 <div class="grid">
-  <div class="card"><h3>Last 24 hours · by kind</h3><canvas class="spark" id="spark" style="height:70px"></canvas><div class="legend" id="legend"></div></div>
+  <div class="card"><h3>Last 24 hours · by kind</h3>
+    <div style="position:relative"><canvas class="spark" id="spark" style="height:150px;cursor:crosshair"></canvas><div class="tip" id="spark_tip"></div></div>
+    <div class="axis m"><span id="ax0">24h ago</span><span>12h ago</span><span>now</span></div>
+    <div class="legend" id="legend"></div>
+    <div id="kind_stats" class="kstats"></div>
+  </div>
   <div class="card"><h3>Busiest bots</h3><div id="top"></div></div>
   <div class="card"><h3>Newly discovered</h3><div id="feed"></div></div>
   <div class="card"><h3>Most crawled countries</h3><div id="countries"></div></div>
@@ -515,6 +528,30 @@ function stackedSpark(canvas, series){
   for(let i=0;i<n;i++){ let y = h; for(const k of keys){ const v = series[k][i]||0; if(!v) continue; const bh = (v/max)*(h-4); c.fillStyle = CATS[k].c; c.globalAlpha = catFilter && catFilter!==k ? .18 : .9; c.fillRect(i*bw+1, y-bh, bw-2, bh); y -= bh; } }
   $('legend').innerHTML = keys.map(k=>`<span style="--c:${CATS[k].c}">${CATS[k].label}</span>`).join('');
 }
+let lastKindSeries = null, lastKindStart = 0;
+function renderKindStats(s){
+  const b = s.bots, series = b.category_hourly || {}, hours = b.hourly || [], prev = b.hourly_prev || [];
+  lastKindSeries = series; lastKindStart = b.hourly_start_utc || 0;
+  const tot = hours.reduce((a,v)=>a+v,0), ptot = prev.reduce((a,v)=>a+v,0);
+  const peakI = hours.reduce((m,v,i)=>v>hours[m]?i:m,0), peakAt = lastKindStart ? new Date((lastKindStart+peakI*3600)*1000).toLocaleTimeString([],{hour:'numeric'}) : `${24-peakI}h ago`;
+  const trend = ptot ? Math.round((tot-ptot)/ptot*100) : null;
+  const byKind = Object.keys(CATS).map(k=>[k,(series[k]||[]).reduce((a,v)=>a+v,0)]).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const kindTot = byKind.reduce((a,[,v])=>a+v,0) || 1;
+  const unident = (series.unknown||[]).reduce((a,v)=>a+v,0);
+  $('kind_stats').innerHTML = `
+    <div><b>${fmt(tot)}</b> bot hits in the last 24 h${trend===null?'':` · <span class="${trend>=0?'up':'down'}">${trend>=0?'▲':'▼'} ${Math.abs(trend)}%</span> vs the 24 h before`} · peak <b>${fmt(hours[peakI]||0)}</b> at ${peakAt} · avg <b>${fmt(Math.round(tot/24))}</b>/h</div>
+    <div class="sharebar" title="share of hits by kind">${byKind.map(([k,v])=>`<span style="width:${(v/kindTot*100).toFixed(1)}%;background:${CATS[k].c}" title="${CATS[k].label} ${Math.round(v/kindTot*100)}%"></span>`).join('')}</div>
+    <div class="m">${byKind.slice(0,4).map(([k,v])=>`<span style="color:${CATS[k].c}">●</span> ${CATS[k].label} ${Math.round(v/kindTot*100)}%`).join(' &nbsp; ')}</div>
+    <div class="m" style="margin-top:6px">${fmt(b.distinct)} bots named so far · <b>${Math.round(unident/(tot||1)*100)}%</b> of today's hits are from bots nobody has identified yet — <a href="/sensors" onclick="return go('/sensors')">add a sensor</a> to help name them</div>`;
+}
+(function(){ const cv = $('spark'), tip = $('spark_tip'); if (!cv) return;
+  cv.addEventListener('mousemove', e => { if (!lastKindSeries) return; const r = cv.getBoundingClientRect(), i = Math.min(23, Math.max(0, Math.floor((e.clientX - r.left)/r.width*24)));
+    const parts = Object.keys(CATS).map(k=>[k,(lastKindSeries[k]||[])[i]||0]).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    const when = lastKindStart ? new Date((lastKindStart+i*3600)*1000).toLocaleTimeString([],{hour:'numeric'}) : `${24-i}h ago`;
+    tip.innerHTML = `<b>${when}</b> · ${fmt(parts.reduce((a,[,v])=>a+v,0))} hits<br>${parts.map(([k,v])=>`<span style="color:${CATS[k].c}">●</span> ${CATS[k].label} ${fmt(v)}`).join('<br>') || 'quiet hour'}`;
+    tip.style.display='block'; tip.style.left = Math.min(r.width-170, Math.max(0, e.clientX - r.left + 10))+'px'; tip.style.top = '4px'; });
+  cv.addEventListener('mouseleave', ()=> tip.style.display='none');
+})();
 function renderTicker(sightings){
   const el = $('ticker');
   if (focusSlug && el.matches(':hover')) return;   // don't yank the hovered item away (see rows())
@@ -576,13 +613,16 @@ async function refresh(){
 }
 function paint(s){
     tickTo(s.bots.total_hits);
-    $('today').textContent = fmt(s.bots.hits_today); $('hour').textContent = fmt(s.bots.hits_this_hour);
+    // Rolling windows, never reset at midnight; yesterday (UTC day) shown underneath for context.
+    const b = s.bots;
+    $('today').textContent = fmt(b.hits_24h ?? b.hits_today); $('today_sub').textContent = b.hits_yesterday != null ? `yesterday ${fmt(b.hits_yesterday)}` : '';
+    $('hour').textContent = fmt(b.hits_this_hour); const prevH = (b.hourly||[])[22]; $('hour_sub').textContent = prevH != null ? `previous hour ${fmt(prevH)}` : '';
     $('discovered').textContent = fmt(s.bots.discovered); $('distinct').textContent = fmt(s.bots.distinct);
     $('nsensors').textContent = fmt(s.network.sensors); $('ncountries').textContent = fmt(s.network.countries);
-    $('humans_today').textContent = fmt(s.humans.unique_today); $('humans_week').textContent = fmt(s.humans.unique_week); $('humans_all').textContent = fmt(s.humans.unique_all);
+    $('humans_today').textContent = fmt(s.humans.unique_24h ?? s.humans.unique_today); $('humans_today_sub').textContent = s.humans.unique_yesterday != null ? `yesterday ${fmt(s.humans.unique_yesterday)}` : ''; $('humans_week').textContent = fmt(s.humans.unique_7d ?? s.humans.unique_week); $('humans_all').textContent = fmt(s.humans.unique_all);
     const pk = s.peak || {}; const hr = h => { const d = new Date(); d.setUTCHours(h,0,0,0); return d.toLocaleTimeString([], {hour:'numeric'}); };
-    $('peak').innerHTML = pk.bots ? `today's peak · <b>${fmt(pk.bots.hits)}</b> bot hits at ${hr(pk.bots.hour_utc)} · <i>${fmt(pk.humans.unique)}</i> humans at ${hr(pk.humans.hour_utc)} · <i>${fmt(pk.humans_now)}</i> here this hour · ${fmt(s.humans.views)} page views` : '';
-    stackedSpark($('spark'), s.bots.category_hourly || {});
+    $('peak').innerHTML = pk.bots ? `peak this UTC day · <b>${fmt(pk.bots.hits)}</b> bot hits at ${hr(pk.bots.hour_utc)} · <i>${fmt(pk.humans.unique)}</i> humans at ${hr(pk.humans.hour_utc)} · <i>${fmt(pk.humans_now)}</i> here this hour · ${fmt(s.humans.views)} page views` : '';
+    stackedSpark($('spark'), s.bots.category_hourly || {}); renderKindStats(s);
     renderCats(s.bots.by_category); renderTicker(s.sightings || []);
     const top = catFilter ? s.bots.top.filter(b=>b.category===catFilter) : s.bots.top;
     rows($('top'), top, botRow);
@@ -607,7 +647,9 @@ const flag = cc => (cc && cc.length===2 && cc!=='XX') ? String.fromCodePoint(...
 // ---------- map (guarded: if the MapLibre CDN fails, counters still work)
 let map=null, refreshMap=()=>{};
 try {   // the map (WebGL, canvas, audio) is optional: if any of it throws on a device, counters and lists must still work
-if (window.maplibregl) {
+// A function scope, not a bare block: WebKit hoists function declarations out of blocks and they lose
+// access to the block's const/let ("Can't find variable: cv" on iOS) — Chrome is lenient, Safari is not.
+if (window.maplibregl) (function initMap(){
 map = new maplibregl.Map({
   container:'map', center:[12,22], zoom:1.7, minZoom:1.3, maxZoom:10, renderWorldCopies:false,
   // OpenFreeMap: free vector tiles, no API key, MapLibre-native. Swap `style` for a MapTiler key later if needed.
@@ -733,7 +775,7 @@ function connectLive(){ if (!window.EventSource) return; const es = new EventSou
 connectLive();
 setInterval(()=>{ const c = Date.now()-60000; recent = recent.filter(t=>t>c); $('hud_rate').textContent = recent.length ? `${recent.length}/min` : ''; }, 2000);
 
-} else { $('map').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">map library failed to load — counters still live</div>'; }
+})(); else { $('map').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">map library failed to load — counters still live</div>'; }
 } catch (mapErr) { console.error('map disabled:', mapErr); map = null; refreshMap = ()=>{};
   try{ navigator.sendBeacon('/v1/client-error', JSON.stringify({m: 'map disabled: ' + String(mapErr && mapErr.message || mapErr).slice(0,250), s: String(mapErr && mapErr.stack || '').slice(0,120), p: location.pathname})); }catch(_){} try{ $('map').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">map unavailable on this device — counters still live</div>'; }catch(_){} }
 

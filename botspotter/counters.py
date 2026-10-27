@@ -333,9 +333,22 @@ class Counters:
         hours = []
         base = int(ts // 3600) * 3600
         p = self.r.pipeline(transaction=False)
-        for i in range(23, -1, -1):
+        for i in range(47, -1, -1):
             p.get(f"bs:total:h:{_hour(base - i * 3600)}")
-        hours = [int(x or 0) for x in await p.execute()]
+        hours48 = [int(x or 0) for x in await p.execute()]
+        hours, hours_prev = hours48[24:], hours48[:24]   # last 24 h and the 24 h before (for the trend)
+
+        # Rolling windows (never reset at midnight): last 24 h and last 7 days, plus yesterday for context.
+        # Humans: PFCOUNT over several HLL keys = cardinality of their union, so hourly sketches
+        # give an exact-enough rolling unique count without storing anyone.
+        yday = _day(ts - 86400)
+        p = self.r.pipeline(transaction=False)
+        p.get(f"bs:total:d:{yday}")
+        p.pfcount(*[f"bs:humans:hll:h:{_hour(base - i * 3600)}" for i in range(24)])
+        p.pfcount(f"bs:humans:hll:d:{yday}")
+        p.pfcount(*[f"bs:humans:hll:d:{_day(ts - i * 86400)}" for i in range(7)])
+        hits_yday, uniq_24h, uniq_yday, uniq_7d = await p.execute()
+
 
         # today's peaks (UTC day): busiest hour for bot hits and for unique humans
         day_start = int(datetime.fromtimestamp(ts, tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
@@ -373,10 +386,14 @@ class Counters:
             "bots": {
                 "total_hits": int(total or 0),
                 "hits_today": int(today or 0),
+                "hits_24h": sum(hours),
+                "hits_yesterday": int(hits_yday or 0),
                 "hits_this_hour": int(hour or 0),
                 "distinct": int(n_bots),
                 "discovered": int(feed_len),
                 "hourly": hours,
+                "hourly_prev": hours_prev,
+                "hourly_start_utc": base - 23 * 3600,
                 "top": top_bots,
                 "by_country": [{"country": c.decode(), "hits": int(s)} for c, s in countries],
                 "by_category": [{"category": c.decode(), "hits": int(s)} for c, s in cats],
@@ -387,7 +404,10 @@ class Counters:
                 "views": int(views or 0),
                 "views_today": int(views_today or 0),
                 "unique_today": int(uniq_today),
+                "unique_24h": int(uniq_24h),
+                "unique_yesterday": int(uniq_yday),
                 "unique_week": int(uniq_week),
+                "unique_7d": int(uniq_7d),
                 "unique_all": int(uniq_all),
                 "by_country": [{"country": c.decode(), "views": int(n)} for c, n in h_countries],
                 "by_source": [{"source": c.decode(), "views": int(n)} for c, n in h_sources],
