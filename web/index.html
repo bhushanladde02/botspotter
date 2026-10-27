@@ -131,7 +131,7 @@
   .kstats .sharebar{display:flex;height:8px;border-radius:5px;overflow:hidden;margin:8px 0 6px;background:#141a2c}
   .kstats .sharebar span{display:block;height:100%}
   .kstats .up{color:var(--acid)} .kstats .down{color:#ff8a8a}
-  .ltools{display:flex;gap:6px;margin:0 0 8px}
+  .ltools{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
   .ltools input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--text);padding:5px 8px;border-radius:7px;font:11px var(--mono)}
   .ltools select{background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:5px 6px;border-radius:7px;font:11px var(--mono)}
   .lscroll{max-height:420px;overflow:auto;scrollbar-width:thin}
@@ -580,7 +580,10 @@ function listTools(el){
   if (el._tools) return el._tools;
   const id = el.id, pref = listPref(id), t = document.createElement('div'); t.className = 'ltools';
   t.innerHTML = `<input type="search" placeholder="filter…" value="${esc(pref.q||'')}" aria-label="filter list"><select aria-label="rows">${[5,10,25,50,0].map(n=>`<option value="${n}" ${((pref.rows??DEFAULT_ROWS)===n)?'selected':''}>${n?n+' rows':'all'}</option>`).join('')}</select>`;
-  el.parentNode.insertBefore(t, el);
+  // Wrap list + toolbar so the toolbar is never a sibling in the parent's grid/flex
+  // (in the two-column humans card it became a grid cell beside the list on phones).
+  const wrap = document.createElement('div'); wrap.className = 'lwrap'; wrap.style.minWidth = '0';
+  el.parentNode.insertBefore(wrap, el); wrap.appendChild(t); wrap.appendChild(el);
   t.querySelector('input').addEventListener('input', e => { setListPref(id,'q',e.target.value); el._html=null; rows(el, el._items, el._render, true); });
   t.querySelector('select').addEventListener('change', e => { setListPref(id,'rows',+e.target.value); el._html=null; rows(el, el._items, el._render, true); });
   el.classList.add('lscroll'); return (el._tools = t);
