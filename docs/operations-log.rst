@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-26 17:35
+     - Verified on the VM that the no-downtime retry (``lb_try_duration 25s``) was still NOT in the running Caddy: ``remote.sh`` step 5 looked for a ``/etc/caddy`` *directory* mount, but Sharpen bind-mounts the Caddyfile as a single file (``deploy/Caddyfile → /etc/caddy/Caddyfile``), so the path resolved empty and the drop-in copy never happened. Step 5 now resolves the Caddyfile and ``extra/`` paths from the container's actual mounts, backs up the previous drop-in, validates before reloading (restores the old drop-in on failure), and fails the deploy if ``try_duration`` is absent from the adapted config. Check after deploy: ``ssh -i ~/.ssh/sharpen_vm ubuntu@129.213.153.181 "docker exec deploy-caddy-1 caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile | grep -o 'try_duration'"``
+     - Bhushan
    * - 2026-10-26 17:10
      - "Bot hits today" dropped to 1 at 17:00 PDT = 00:00 UTC: daily counters are UTC days and the tiles showed them. Tiles now use rolling windows that never reset — bot hits and unique humans in the last 24 h (``hits_24h``; ``unique_24h`` = PFCOUNT over the 24 hourly HLLs), humans last 7 days (``unique_7d`` = union of 7 daily HLLs) — with "yesterday" / "previous hour" sublines for context. Daily/weekly UTC figures remain in the snapshot and on the Audience page; no data was lost
      - Bhushan
