@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-27 09:50
+     - Phone layout bug in "Humans · where from": the list toolbar (filter + rows) was inserted as a *sibling* of the list, and in that card the parent is a two-column grid, so the toolbar rendered as tall grid cells beside the countries. ``listTools`` now wraps list + toolbar in one block (``.lwrap``) so parent layout cannot split them; toolbar wraps on narrow columns. Verified with a 390 px Playwright render
+     - Bhushan
    * - 2026-10-26 17:35
      - Verified on the VM that the no-downtime retry (``lb_try_duration 25s``) was still NOT in the running Caddy: ``remote.sh`` step 5 looked for a ``/etc/caddy`` *directory* mount, but Sharpen bind-mounts the Caddyfile as a single file (``deploy/Caddyfile → /etc/caddy/Caddyfile``), so the path resolved empty and the drop-in copy never happened. Step 5 now resolves the Caddyfile and ``extra/`` paths from the container's actual mounts, backs up the previous drop-in, validates before reloading (restores the old drop-in on failure), and fails the deploy if ``try_duration`` is absent from the adapted config. Check after deploy: ``ssh -i ~/.ssh/sharpen_vm ubuntu@129.213.153.181 "docker exec deploy-caddy-1 caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile | grep -o 'try_duration'"``
      - Bhushan
