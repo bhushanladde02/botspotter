@@ -67,6 +67,15 @@ Public terms
 
 The user-facing Sensor Terms & Privacy page is ``/terms`` in ``web/index.html`` (section ``#terms``). Keep it in sync with this file; §5 there mirrors "What is stored" here. The draft was written without a lawyer — get it reviewed before accepting third-party sensors at scale.
 
+Check any site
+--------------
+
+``/check`` fetches a third party's public ``robots.txt`` on the visitor's request — the one case where we make a
+request to a site that did not install a sensor. We request that one file only, identify ourselves in the
+User-Agent with a link here, cache the result for an hour, and never fetch a page. The domain checked is counted
+(for the "most checked" chips); the visitor's IP is hashed for the hourly rate limit and not stored; the IP a
+visitor types into the verifier is matched against published ranges in-process and not stored.
+
 Claims
 ------
 

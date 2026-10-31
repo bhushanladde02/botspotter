@@ -23,6 +23,8 @@ sensor → `POST /v1/ingest` → classify (known registry / heuristics) → fing
 
 Full detail: [`docs/architecture.rst`](docs/architecture.rst).
 
+**Check any site** — [botspotter.app/check](https://botspotter.app/check): what any domain's `robots.txt` asks 16 AI crawlers to do, and whether an IP in your logs is really the bot it claims to be.
+
 ## Docs
 Full documentation (Sphinx): https://bhushanladde02.github.io/botspotter/ — built from `docs/` by CI.
 

@@ -38,6 +38,7 @@ from fastapi.staticfiles import StaticFiles
 from ..config import settings
 from ..avatar import avatar_svg
 from ..audience import build_ledger, ledger_csv, visits_csv
+from ..check import Checker, crawler_catalog
 from ..claims import Claims
 from ..counters import Counters
 from ..enroll import Enrollment, Sessions, github_exchange, normalize_domain
@@ -52,7 +53,7 @@ PORTAL_SITE = "botspotter-portal"
 
 def create_app(counters: Counters | None = None, stream=None, enricher: Enricher | None = None,
                self_sensor: bool = True, store=None, admin_key: str | None = None,
-               enrollment: Enrollment | None = None, exchange=None) -> FastAPI:
+               enrollment: Enrollment | None = None, exchange=None, checker: Checker | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.counters = counters or Counters.from_url()
@@ -64,6 +65,7 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
         app.state.sessions = Sessions(settings.session_secret or secrets.token_hex(32))   # unset secret: sessions die with the process
         app.state.enroll = enrollment or Enrollment(app.state.counters.r, app.state.enricher.geo)
         app.state.exchange = exchange or github_exchange
+        app.state.checker = checker or Checker(app.state.counters.r, app.state.enricher.verifier)
         app.state.oauth_enabled = bool(settings.github_client_id and settings.github_client_secret) or exchange is not None
         await app.state.stream.start()
         await app.state.store.start()
@@ -194,8 +196,8 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
     @app.get("/sitemap.xml")
     async def sitemap(request: Request):
         feed = await request.app.state.counters.feed(200)
-        urls = ["https://botspotter.app/", "https://botspotter.app/about", "https://botspotter.app/sensors",
-                "https://botspotter.app/claim", "https://botspotter.app/terms"]
+        urls = ["https://botspotter.app/", "https://botspotter.app/about", "https://botspotter.app/check",
+                "https://botspotter.app/sensors", "https://botspotter.app/claim", "https://botspotter.app/terms"]
         urls += [f"https://botspotter.app/bot/{f['slug']}" for f in feed if f.get("slug")]
         xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + \
               "".join(f"<url><loc>{u}</loc></url>" for u in urls) + "</urlset>"
@@ -441,6 +443,34 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
                                  headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no",
                                           "Connection": "keep-alive"})
 
+
+    # ---- check any site: robots.txt vs AI crawlers, and "is this IP really that bot?" ----
+    # Public, no sign-in. See botspotter/check.py for the SSRF guard, cache and rate limit.
+    def _visitor_ip(request: Request) -> str:
+        return request.headers.get("cf-connecting-ip") or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip() \
+            or (request.client.host if request.client else "")
+
+    @app.get("/v1/check/robots")
+    async def check_robots(request: Request, site: str = Query(..., min_length=1, max_length=253)):
+        chk = request.app.state.checker
+        if not await chk.allowed(_visitor_ip(request)):
+            raise HTTPException(429, "too many checks from this network; try again in an hour")
+        out = await chk.robots(site)
+        if "error" in out:
+            return Response(orjson.dumps(out), status_code=out.get("status", 400), media_type="application/json",
+                            headers={"Cache-Control": "no-store"})
+        return Response(orjson.dumps(out), media_type="application/json", headers={"Cache-Control": "public, max-age=300"})
+
+    @app.get("/v1/check/ip")
+    async def check_ip(request: Request, ip: str = Query(..., max_length=64), bot: str = Query(..., max_length=40)):
+        out = request.app.state.checker.ip(ip, bot)
+        code = out.pop("status", 200) if "error" in out else 200
+        return Response(orjson.dumps(out), status_code=code, media_type="application/json", headers={"Cache-Control": "no-store"})
+
+    @app.get("/v1/check/crawlers")
+    async def check_crawlers(request: Request):
+        return cached({**crawler_catalog(), "popular": await request.app.state.checker.popular(8)}, 120)
+
     @app.get("/v1/sites")
     async def sites(request: Request):
         """Sensor sites and their (city-level) locations, for the map."""
@@ -456,6 +486,7 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
             return FileResponse(WEB_DIR / "index.html", headers={"Cache-Control": "public, max-age=60"})
 
         @app.get("/about")
+        @app.get("/check")
         @app.get("/sensors")
         @app.get("/terms")
         @app.get("/claim")

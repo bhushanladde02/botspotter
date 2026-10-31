@@ -217,6 +217,18 @@ Operations: ``bs:site:<domain>`` holds status/owner/key hash; ``bs:sensor_keys``
 removals take effect within 60 s). Rotating ``BS_SESSION_SECRET`` signs everyone out. To ban a site, ``HDEL
 bs:sensor_keys <hash>`` and ``DEL bs:site:<domain>``. Limits: 5 sites per account, 10 verifications/hour.
 
+Check any site (``/check``)
+---------------------------
+
+Public robots.txt grader + IP verifier (:mod:`botspotter.check`, API in :doc:`api`). Redis: ``bs:check:robots:<domain>``
+cached result (1 h), ``bs:check:top`` zset of most-checked domains (shown as chips on the page), ``bs:check:count``
+total checks, ``bs:check:rl:<hash of visitor IP>`` rate limit (40/hour; the IP is hashed, never stored). To clear a
+stale grade after a site changes its robots.txt: ``DEL bs:check:robots:<domain>``. The fetch is an outbound request
+from the **api** container to a visitor-chosen host; the SSRF guard refuses non-public addresses at every redirect
+hop, so a private Docker/VM hostname can never be reached through it. If a site blocks our User-Agent
+(``BotSpotter-Check/1.0``) the grade says "HTTP 403 — crawlers treat that as no restrictions", which is correct per
+RFC 9309. Crawler tokens live in ``AI_CRAWLERS``; add a row there when a new operator publishes a token.
+
 Sensors on the VM
 -----------------
 
