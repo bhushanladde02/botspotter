@@ -73,7 +73,7 @@ Sensor keys
 
 -  v1: ``BS_SENSOR_KEYS="key:site_id,..."`` in ``.env``. Restart ``ingest`` after editing (``docker compose up -d ingest``).
 -  Key requests arrive by email from the ``/sensors`` form (subject "BotSpotter sensor key: "); the form requires ticking acceptance of ``/terms``. Keep the email as the acceptance record. Then ``openssl rand -hex 16``, add ``hex:their-site``, reply with the key + link to ``/sensors``.
--  Set up the ``hello@botspotter.app`` mailbox (or change the address in ``web/index.html``) before launch.
+-  Contact address everywhere (page, docs) is ``bhushanladde02@gmail.com``; the /sensors page has a "Need a hand integrating?" section with a pre-filled mailto and a GitHub-issue link. If a ``hello@botspotter.app`` mailbox is ever created, change the address in ``web/index.html`` and the docs in one step.
 -  To revoke: remove the pair, restart ingest. Their history stays under the ``site_id``.
 -  Later (``growth.md`` tier 2): move to the ``sensors`` table (``key_hash = sha256(key)``); ingest already accepts sha256-hashed keys in the map.
 

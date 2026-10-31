@@ -4,7 +4,7 @@ Add your site as a sensor
 Two clicks and one paste, self-serve, at https://botspotter.app/sensors:
 
 1. **Sign in with GitHub.** A key is only ever issued to an authenticated person who has proven control of the
-   domain; we store the GitHub id, login and avatar — no e-mail. (No GitHub? e-mail ``hello@botspotter.app`` and a
+   domain; we store the GitHub id, login and avatar — no e-mail. (No GitHub? e-mail ``bhushanladde02@gmail.com`` and a
    key is issued by hand.)
 2. **Add the domain, prove it, click Verify.** Either a DNS TXT record ``_botspotter.<domain>`` with value
    ``botspotter-verify=<token>`` or a file at ``https://<domain>/.well-known/botspotter-verify.txt`` containing that

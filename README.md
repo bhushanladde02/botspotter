@@ -61,5 +61,8 @@ Python 3.10+ · FastAPI · Granian/uvloop · Redpanda · Redis · PostgreSQL + T
 ## Credits
 Built by Bhushan Ladde. Architecture, analysis and testing are his own; AI assistance (Claude) was used for drafting code and docs.
 
+## Support
+Questions or integration help: open an issue, or email bhushanladde02@gmail.com.
+
 ## License
 MIT © 2026 Bhushan Arun Ladde — see [LICENSE](LICENSE).

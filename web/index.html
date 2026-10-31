@@ -144,6 +144,8 @@
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
   .chips a{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px;cursor:pointer}
   .chips a:hover{color:var(--acid);border-color:var(--acid)}
+  .chips a .sc{margin-left:6px;padding:0 5px;border-radius:5px;font-size:10px}
+  .chips a .sc.b{background:#2a1626;color:#ff6fb0} .chips a .sc.p{background:#2a2414;color:#ffc85c} .chips a .sc.a{background:#13261a;color:#6fe39a}
   .ck-head{font-family:var(--mono);font-size:clamp(17px,2.6vw,22px);color:var(--text);margin:18px 0 6px;letter-spacing:-.3px}
   .ck-meta{font-size:13px;color:var(--muted);margin-bottom:12px}
   .ck-bars{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 18px}
@@ -269,10 +271,16 @@
   <p>Every AI company that crawls the web says it honours <span class="ex">robots.txt</span>. Type any domain and see what that site <em>asks</em> the AI crawlers to do &mdash; train on it, index it for AI search, fetch it for a chatbot user &mdash; and get a paste-ready fix if you own it.</p>
 
   <form onsubmit="return ckRun(event)" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;max-width:none">
-    <input id="ck_site" placeholder="nytimes.com, your-site.com, a competitor…" autocomplete="off" autocapitalize="none" spellcheck="false" required style="flex:1;min-width:220px">
+    <input id="ck_site" list="ck_dl" placeholder="nytimes.com, your-site.com, a competitor…" autocomplete="off" autocapitalize="none" spellcheck="false" required style="flex:1;min-width:220px">
+    <datalist id="ck_dl"></datalist>
     <button type="submit" id="ck_btn">Check</button>
   </form>
   <div class="chips" id="ck_chips"></div>
+  <div id="ck_mine_wrap" style="display:none;margin-top:14px">
+    <div class="m" style="font-size:12px;display:flex;justify-content:space-between;align-items:center"><span>Your checks · <b id="ck_mine_n"></b> sites, on this device</span><a onclick="ckForget()" style="cursor:pointer">clear</a></div>
+    <div class="chips" id="ck_mine"></div>
+  </div>
+  <div class="m" id="ck_totals" style="font-size:12px;margin-top:10px"></div>
 
   <div id="ck_out" style="display:none">
     <div class="ck-head" id="ck_head"></div>
@@ -313,7 +321,7 @@
     <h2>1 &middot; Sign in</h2>
     <p>Keys are issued only to a signed-in owner who has proven control of the domain. We store your GitHub id, login and avatar &mdash; nothing else (see <a href="/terms" onclick="return go('/terms')">accounts</a>).</p>
     <a class="btn" id="en_login" href="/auth/github">Sign in with GitHub</a>
-    <div class="note" id="en_disabled" style="display:none">Self-serve enrollment isn't enabled on this server yet &mdash; email <a href="mailto:hello@botspotter.app">hello@botspotter.app</a> with your domain and we'll issue a key by hand.</div>
+    <div class="note" id="en_disabled" style="display:none">Self-serve enrollment isn't enabled on this server yet &mdash; email <a href="mailto:bhushanladde02@gmail.com">bhushanladde02@gmail.com</a> with your domain and we'll issue a key by hand.</div>
   </div>
 
   <div id="en_app" style="display:none">
@@ -368,7 +376,16 @@ BOTSPOTTER_KEY = "<span class="en-k"></span>"</pre>
     </div>
   </div>
 
-  <div class="note" style="margin-top:18px">What leaves your server: header <em>names</em>, User-Agent, client IP (used once for country + network, then discarded), method, status, and whether the path was <span class="ex">robots.txt</span>. Never page content, cookies, header values, or human visitors. No GitHub account? Email <a href="mailto:hello@botspotter.app">hello@botspotter.app</a> with your domain.</div>
+  <div class="note" style="margin-top:18px">What leaves your server: header <em>names</em>, User-Agent, client IP (used once for country + network, then discarded), method, status, and whether the path was <span class="ex">robots.txt</span>. Never page content, cookies, header values, or human visitors. No GitHub account? Email <a href="mailto:bhushanladde02@gmail.com">bhushanladde02@gmail.com</a> with your domain.</div>
+
+  <h2 id="support">Need a hand integrating?</h2>
+  <p>Stuck on the DNS proof, a Caddy/Nginx log sensor, a framework the middleware doesn't cover, or you'd rather someone set it up with you &mdash; just ask. One person answers, usually within a day.</p>
+  <div class="ck-row" style="margin-top:4px">
+    <a class="btn" href="mailto:bhushanladde02@gmail.com?subject=BotSpotter%20sensor%20help%20for%20MY-DOMAIN&amp;body=Site%3A%20%0AStack%20(Nginx%2FCaddy%2FFastAPI%2FDjango%2F...)%3A%20%0AWhere%20I%27m%20stuck%3A%20">Email Bhushan</a>
+    <a class="btn" style="background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:500" href="https://github.com/bhushanladde02/botspotter/issues/new?labels=integration&amp;title=Integration%20help%3A%20" rel="noopener">Open a GitHub issue</a>
+    <span class="m" style="font-size:12px">bhushanladde02@gmail.com</span>
+  </div>
+  <p class="m" style="font-size:13px;margin-top:10px">Include your domain and what your site runs on; never send your sensor key &mdash; it is yours alone and we never need it.</p>
 </section>
 
 <section class="about" id="page-terms">
@@ -385,7 +402,7 @@ BOTSPOTTER_KEY = "<span class="en-k"></span>"</pre>
   </ul>
 
   <h2>1. Who we are</h2>
-  <p>BotSpotter (&ldquo;we&rdquo;, &ldquo;us&rdquo;) is an independent, non-commercial project operated by Bhushan Ladde, California, USA. Contact: <a href="mailto:hello@botspotter.app">hello@botspotter.app</a>.</p>
+  <p>BotSpotter (&ldquo;we&rdquo;, &ldquo;us&rdquo;) is an independent, non-commercial project operated by Bhushan Ladde, California, USA. Contact: <a href="mailto:bhushanladde02@gmail.com">bhushanladde02@gmail.com</a>.</p>
 
   <h2>2. Your responsibilities as a sensor operator</h2>
   <ul>
@@ -430,7 +447,7 @@ BOTSPOTTER_KEY = "<span class="en-k"></span>"</pre>
   <p>These terms are governed by the laws of the State of California, USA, without regard to conflict-of-law rules; courts in Sacramento County, California have exclusive jurisdiction. We may update these terms; material changes will be dated here and announced on the site. Continued use after a change is acceptance.</p>
 
   <h2>12. Claiming a bot</h2>
-  <p>A bot may be claimed by its operator after verification (a fetch challenge the bot itself answers, or a token published on the bot's homepage domain). We store the contact email you give us as a salted hash once verified, plus the public fields you set (name, description, homepage, operator, category). You warrant that you operate the bot and that the information is accurate. Names must not impersonate others, mislead about the operator, or be offensive; we may edit or revoke a claim, and will do so on a substantiated dispute sent to hello@botspotter.app. The generated name remains a permanent public alias. The owner key is shown once; we cannot recover it, but you can re-verify to obtain a new one.</p>
+  <p>A bot may be claimed by its operator after verification (a fetch challenge the bot itself answers, or a token published on the bot's homepage domain). We store the contact email you give us as a salted hash once verified, plus the public fields you set (name, description, homepage, operator, category). You warrant that you operate the bot and that the information is accurate. Names must not impersonate others, mislead about the operator, or be offensive; we may edit or revoke a claim, and will do so on a substantiated dispute sent to bhushanladde02@gmail.com. The generated name remains a permanent public alias. The owner key is shown once; we cannot recover it, but you can re-verify to obtain a new one.</p>
 
   <p style="margin-top:30px"><a href="/sensors" onclick="return go('/sensors')">&larr; add your site</a> &nbsp;·&nbsp; <a href="/" onclick="return go('/')">live counter</a></p>
 </section>
@@ -475,7 +492,7 @@ BOTSPOTTER_KEY = "<span class="en-k"></span>"</pre>
 
   <h2>Already verified?</h2>
   <p>Open <span class="ex">/claim?slug=&lt;your-bot&gt;</span> and paste your owner key: <input id="owner_key_in" placeholder="owner key" style="width:280px;margin:0 6px"> <button onclick="useOwnerKey()">Manage</button></p>
-  <p class="note">Abuse, impersonation or misleading names get the claim revoked (<a href="/terms" onclick="return go('/terms')">Terms §12</a>). To dispute a claim, email <a href="mailto:hello@botspotter.app">hello@botspotter.app</a>.</p>
+  <p class="note">Abuse, impersonation or misleading names get the claim revoked (<a href="/terms" onclick="return go('/terms')">Terms §12</a>). To dispute a claim, email <a href="mailto:bhushanladde02@gmail.com">bhushanladde02@gmail.com</a>.</p>
 </section>
 
 <section class="about" id="page-stats">
@@ -546,7 +563,7 @@ BOTSPOTTER_KEY = "<span class="en-k"></span>"</pre>
 
 <footer>
   BotSpotter counts bot <em>visits</em> seen by participating sites; no one sees the whole internet. No IPs are stored, bots are named by a hash, humans are counted without cookies.
-  · <a href="/check" onclick="return go('/check')">check any site</a> · <a href="/sensors" onclick="return go('/sensors')">add your site</a> · <a href="/claim" onclick="return go('/claim')">claim your bot</a> · <a href="/terms" onclick="return go('/terms')">terms</a> · <a href="/about" onclick="return go('/about')">about</a>
+  · <a href="/check" onclick="return go('/check')">check any site</a> · <a href="/sensors" onclick="return go('/sensors')">add your site</a> · <a href="/claim" onclick="return go('/claim')">claim your bot</a> · <a href="/terms" onclick="return go('/terms')">terms</a> · <a href="/about" onclick="return go('/about')">about</a> · <a href="mailto:bhushanladde02@gmail.com?subject=BotSpotter">contact</a>
   <div style="margin-top:8px;font-size:11px;opacity:.6">&copy; 2026 Bhushan Arun Ladde · open source under the <a href="https://github.com/bhushanladde02/botspotter/blob/main/LICENSE" rel="license">MIT License</a></div>
 </footer>
 
@@ -937,14 +954,31 @@ function route(){ const page = PAGES[location.pathname] || null; document.body.c
 // ---------- check any site (robots.txt vs AI crawlers) + IP verifier
 const CK_DEFAULTS = ['nytimes.com','reddit.com','wikipedia.org','bbc.com','stackoverflow.com','github.com','medium.com','amazon.com'];
 let ckInited = false, ckLast = null;
+// Per-visitor tracker: the sites you checked, newest first, kept in this browser only (no account, no server).
+function ckMine(){ try{ return JSON.parse(localStorage.getItem('bs_checks')||'[]'); }catch(_){ return []; } }
+function ckRemember(j){
+  const list = ckMine().filter(x => x.domain !== j.domain);
+  list.unshift({domain: j.domain, blocked: j.blocked, partial: j.partial, n: j.rows.length, ts: Date.now(), times: 1 + ((ckMine().find(x=>x.domain===j.domain)||{}).times||0)});
+  try{ localStorage.setItem('bs_checks', JSON.stringify(list.slice(0,50))); }catch(_){}
+  ckPaintMine();
+}
+function ckForget(){ try{ localStorage.removeItem('bs_checks'); }catch(_){} ckPaintMine(); }
+function ckPaintMine(){
+  const list = ckMine(); $('ck_mine_wrap').style.display = list.length ? 'block' : 'none'; $('ck_mine_n').textContent = list.length;
+  $('ck_mine').innerHTML = list.slice(0,20).map(x => { const cls = x.blocked===x.n?'b':(x.blocked||x.partial)?'p':'a';
+    return `<a onclick="ckGo('${esc(x.domain)}')" title="checked ${x.times}× · last ${new Date(x.ts).toLocaleString()}">${esc(x.domain)}<span class="sc ${cls}">${x.blocked}/${x.n}</span></a>`; }).join('');
+  $('ck_dl').innerHTML = list.map(x => `<option value="${esc(x.domain)}">`).join('');
+}
 async function ckInit(){
   const q = new URLSearchParams(location.search).get('site');
   if (q) $('ck_site').value = q;
+  ckPaintMine();
   if (!ckInited){ ckInited = true;
     try{ const j = await (await fetch(API+'/v1/check/crawlers')).json();
       const pop = (j.popular||[]).map(p=>p.domain), list = [...new Set([...pop, ...CK_DEFAULTS])].slice(0,10);
       $('ck_chips').innerHTML = list.map(d=>`<a onclick="ckGo('${esc(d)}')">${esc(d)}</a>`).join('');
       $('ip_bot').innerHTML = (j.verifiable||[]).map(b=>`<option ${b==='GPTBot'?'selected':''}>${esc(b)}</option>`).join('');
+      if (j.totals && j.totals.checks) $('ck_totals').textContent = `${fmt(j.totals.checks)} checks on ${fmt(j.totals.sites)} sites so far, by everyone`;
     }catch(_){ $('ck_chips').innerHTML = CK_DEFAULTS.map(d=>`<a onclick="ckGo('${d}')">${d}</a>`).join(''); }
   }
   if (q) ckCheck(q);
@@ -957,7 +991,7 @@ async function ckCheck(site){
   try{
     const r = await fetch(API+'/v1/check/robots?site='+encodeURIComponent(site)); const j = await r.json();
     if (!r.ok){ throw new Error(j.error || ('HTTP '+r.status)); }
-    ckLast = j; history.replaceState(null,'','/check?site='+encodeURIComponent(j.domain)); ckRender(j);
+    ckLast = j; history.replaceState(null,'','/check?site='+encodeURIComponent(j.domain)); ckRender(j); ckRemember(j);
   }catch(err){ $('ck_out').style.display='none'; $('ck_err').style.display='block'; $('ck_err').textContent = String(err.message||err); }
   btn.disabled = false; btn.textContent = 'Check';
 }
@@ -965,7 +999,8 @@ function ckRender(j){
   $('ck_out').style.display='block';
   $('ck_head').innerHTML = `<span style="color:var(--acid)">${esc(j.domain)}</span> · ${esc(j.headline)}`;
   const when = new Date(j.checked_at*1000);
-  $('ck_meta').textContent = (j.has_robots ? `robots.txt fetched from ${j.url}` : `no usable robots.txt at ${j.url} (HTTP ${j.http_status})`) + ` · checked ${when.toLocaleString()}` + (j.cached ? ' (cached ≤1 h)' : '');
+  const prev = ckMine().find(x => x.domain === j.domain);
+  $('ck_meta').textContent = (prev ? `you've checked this site ${prev.times}× before · ` : '') + (j.has_robots ? `robots.txt fetched from ${j.url}` : `no usable robots.txt at ${j.url} (HTTP ${j.http_status})`) + ` · checked ${when.toLocaleString()}` + (j.cached ? ' (cached ≤1 h)' : '');
   $('ck_bars').innerHTML = Object.values(j.by_purpose).map(p => { const pct = p.total ? Math.round(100*p.blocked/p.total) : 0;
     return `<div class="ck-bar"><small>${esc(p.label)}</small><b>${p.blocked}/${p.total} blocked</b><div class="track"><i style="width:${pct}%"></i></div></div>`; }).join('');
   const lab = {allowed:'allowed', partial:'some paths', blocked:'blocked'};

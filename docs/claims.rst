@@ -65,7 +65,7 @@ Rules
   unique across display names **and** generated names; reserved words refused.
 - ``category`` ∈ training · search · agent · scraper · seo · other.
 - A claimed bot cannot be claimed again; disputes go to
-  ``hello@botspotter.app`` (Terms §12). Operators can revoke/edit via the key.
+  ``bhushanladde02@gmail.com`` (Terms §12). Operators can revoke/edit via the key.
 - Claimed bots show a ✓ and their display name everywhere; the generated name
   is shown as *aka*.
 
