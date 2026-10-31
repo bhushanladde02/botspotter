@@ -10,8 +10,11 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-10-31 11:20
+     - Support for integrations: "Need a hand integrating?" section on ``/sensors`` with a pre-filled e-mail (subject + stack/where-stuck template) and a GitHub-issue link; ``contact`` link in the footer. Every ``hello@botspotter.app`` mention (page, terms, claims, docs) now points to ``bhushanladde02@gmail.com`` — that mailbox was never created, so key requests and abuse reports would have bounced
+     - Bhushan
    * - 2026-10-30 21:00
-     - New public feature **Check any site** (``/check``): type any domain → what its robots.txt asks 16 AI crawler tokens to do (RFC 9309 evaluation, grouped training / AI search / agents, paste-ready block snippets, share link ``/check?site=``), plus "is this IP really that bot?" against the published ranges. No sign-in; SSRF guard (public addresses only, per redirect hop), 1 h cache, 40 checks/visitor/hour, 512 KB cap. Linked from nav, footer and the impostor card; in the sitemap. Also fixed a CSS leak: the header ``.search`` flex rule applied to any ``.tag.search`` span
+     - New public feature **Check any site** (``/check``): type any domain → what its robots.txt asks 16 AI crawler tokens to do (RFC 9309 evaluation, grouped training / AI search / agents, paste-ready block snippets, share link ``/check?site=``), plus "is this IP really that bot?" against the published ranges. No sign-in; SSRF guard (public addresses only, per redirect hop), 1 h cache, 40 checks/visitor/hour, 512 KB cap. Per-visitor tracker in the browser (``localStorage``): your checked sites as chips with their grade and how many times you checked them, autofill via ``<datalist>``, one-click clear; site-wide "N checks on M sites" from Redis. Linked from nav, footer and the impostor card; in the sitemap. Also fixed a CSS leak: the header ``.search`` flex rule applied to any ``.tag.search`` span
      - Bhushan
    * - 2026-10-27 09:50
      - Phone layout bug in "Humans · where from": the list toolbar (filter + rows) was inserted as a *sibling* of the list, and in that card the parent is a two-column grid, so the toolbar rendered as tall grid cells beside the countries. ``listTools`` now wraps list + toolbar in one block (``.lwrap``) so parent layout cannot split them; toolbar wraps on narrow columns. Verified with a 390 px Playwright render
@@ -118,7 +121,7 @@ Open items
 
 -  ☐ Add GitHub secrets (``VM_SSH_KEY``, ``VM_HOST``, ``VM_USER``) and enable Pages — see :doc:`cicd`.
 -  ☐ Cloudflare SSL → Full (strict); WAF rate-limit rule on ``/v1/ingest``.
--  ☐ Create ``hello@botspotter.app`` mailbox (sensor key requests land there).
+-  ☑ Contact address: ``bhushanladde02@gmail.com`` (2026-10-31) instead of an unprovisioned ``hello@`` mailbox.
 -  ☐ Legal review of ``/terms``.
 -  ☐ First real sensor: résumé site via Vector with the ``bhushan-profile`` key.
 -  ☐ Retire the Render demo once the production site has data (or keep as a staging target).
