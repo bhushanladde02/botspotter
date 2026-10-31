@@ -38,9 +38,9 @@
   .live{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--acid);box-shadow:0 0 12px var(--acid);animation:pulse 1.4s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-  .search{display:flex;gap:6px;position:relative}
-  .search input{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:9px 12px;border-radius:8px;width:260px;font-family:var(--mono);font-size:13px;outline:none}
-  .search input:focus{border-color:var(--cyan)}
+  div.search{display:flex;gap:6px;position:relative}
+  div.search input{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:9px 12px;border-radius:8px;width:260px;font-family:var(--mono);font-size:13px;outline:none}
+  div.search input:focus{border-color:var(--cyan)}
   .results{position:absolute;top:42px;left:0;right:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;z-index:20;max-height:320px;overflow:auto;display:none}
   .results div{padding:9px 12px;cursor:pointer;font-family:var(--mono);font-size:12px;border-bottom:1px solid var(--line)}
   .results div:hover{background:#151b2e}
@@ -141,6 +141,27 @@
   .about select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;font:inherit}
   .about button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:500}
   .about button:disabled{opacity:.4;cursor:not-allowed}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
+  .chips a{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px;cursor:pointer}
+  .chips a:hover{color:var(--acid);border-color:var(--acid)}
+  .ck-head{font-family:var(--mono);font-size:clamp(17px,2.6vw,22px);color:var(--text);margin:18px 0 6px;letter-spacing:-.3px}
+  .ck-meta{font-size:13px;color:var(--muted);margin-bottom:12px}
+  .ck-bars{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 18px}
+  .ck-bar{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .ck-bar b{font-family:var(--mono);font-size:20px;display:block;color:var(--text)} .ck-bar small{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+  .ck-bar .track{height:6px;border-radius:4px;background:#141a2c;margin-top:8px;overflow:hidden} .ck-bar .track i{display:block;height:100%;background:var(--pink)}
+  .ck-table{width:100%;border-collapse:collapse;font-size:13px;margin:0 0 6px}
+  .ck-table th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);padding:8px 8px 6px;border-bottom:1px solid var(--line)}
+  .ck-table td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+  .ck-table td.tok{font-family:var(--mono);white-space:nowrap} .ck-table td .why{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+  .st{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:6px;white-space:nowrap}
+  .st.blocked{background:#2a1626;color:#ff6fb0} .st.allowed{background:#13261a;color:#6fe39a} .st.partial{background:#2a2414;color:#ffc85c}
+  .st.verified{background:#13261a;color:#6fe39a} .st.impostor{background:#2a1626;color:#ff6fb0} .st.unknown{background:#182039;color:var(--muted)}
+  .ck-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  .ck-row input,.ck-row select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;font:inherit;font-size:14px}
+  .ck-verdict{font-family:var(--mono);font-size:16px;margin-top:12px}
+  details.ck summary{cursor:pointer;color:var(--muted);font-size:13px;margin-top:10px}
+  @media (max-width:700px){ .ck-bars{grid-template-columns:1fr 1fr 1fr;gap:6px} .ck-bar{padding:8px} .ck-bar b{font-size:16px} .ck-table td .why{display:none} .nav{gap:10px;font-size:12px} }
   body.about-mode .hero,body.about-mode .tiles:not(.st),body.about-mode .cats,body.about-mode .ticker,body.about-mode #map,body.about-mode .grid{display:none}
   
   footer{text-align:center;color:var(--muted);font-size:12px;padding:20px;border-top:1px solid var(--line)}
@@ -152,7 +173,7 @@
 <header>
   <div class="logo">Bot<span>Spotter</span> <span style="font-weight:400;color:var(--muted);font-size:12px">beta</span></div>
   <div class="live"><span class="dot"></span><span id="status">connecting…</span><span id="watching" style="margin-left:10px;color:var(--pink)"></span></div>
-  <nav class="nav"><a href="/" id="nav_live" onclick="return go('/')">Live</a><a href="/about" id="nav_about" onclick="return go('/about')">What is this?</a><a href="/sensors" id="nav_sensors" onclick="return go('/sensors')">Add your site</a><a href="/claim" id="nav_claim" onclick="return go('/claim')">Claim your bot</a><a href="/stats" id="nav_stats" onclick="return go('/stats')">Audience</a></nav>
+  <nav class="nav"><a href="/" id="nav_live" onclick="return go('/')">Live</a><a href="/about" id="nav_about" onclick="return go('/about')">What is this?</a><a href="/check" id="nav_check" onclick="return go('/check')">Check any site</a><a href="/sensors" id="nav_sensors" onclick="return go('/sensors')">Add your site</a><a href="/claim" id="nav_claim" onclick="return go('/claim')">Claim your bot</a><a href="/stats" id="nav_stats" onclick="return go('/stats')">Audience</a></nav>
   <div class="search">
     <input id="q" placeholder="search a bot name… e.g. copper heron" autocomplete="off">
     <div class="results" id="results"></div>
@@ -198,6 +219,7 @@
     <div style="display:flex;gap:18px;margin-bottom:8px"><div><b id="t_ver" style="font-size:22px;color:var(--acid)">—</b><div class="m">verified hits</div></div><div><b id="t_imp" style="font-size:22px;color:#ff3b4f">—</b><div class="m">impostor hits</div></div></div>
     <div id="t_ops"></div>
     <div class="m" id="t_note" style="font-size:11px;margin-top:8px"></div>
+    <div class="m" style="font-size:11px;margin-top:6px"><a href="/check" onclick="return go('/check')">check an IP from your logs →</a></div>
   </div>
   <div class="card"><h3>Where bots live</h3><div class="m" style="font-size:11px;margin:0 0 8px">hosting network of the request, from its ASN</div><div id="clouds"></div></div>
   <div class="card"><h3>Sensors with most catches</h3><div id="sensors"></div></div>
@@ -240,6 +262,47 @@
   <div class="tagline">Same bot. Same name. Forever.</div><br>
   <a class="cta" href="/sensors" onclick="return go('/sensors')">Add your site as a sensor &rarr;</a>
   <a href="/" onclick="return go('/')" style="margin-left:16px">&larr; back to the live counter</a>
+</section>
+
+<section class="about" id="page-check">
+  <h1>Check any site</h1>
+  <p>Every AI company that crawls the web says it honours <span class="ex">robots.txt</span>. Type any domain and see what that site <em>asks</em> the AI crawlers to do &mdash; train on it, index it for AI search, fetch it for a chatbot user &mdash; and get a paste-ready fix if you own it.</p>
+
+  <form onsubmit="return ckRun(event)" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;max-width:none">
+    <input id="ck_site" placeholder="nytimes.com, your-site.com, a competitor…" autocomplete="off" autocapitalize="none" spellcheck="false" required style="flex:1;min-width:220px">
+    <button type="submit" id="ck_btn">Check</button>
+  </form>
+  <div class="chips" id="ck_chips"></div>
+
+  <div id="ck_out" style="display:none">
+    <div class="ck-head" id="ck_head"></div>
+    <div class="ck-meta" id="ck_meta"></div>
+    <div class="ck-bars" id="ck_bars"></div>
+    <table class="ck-table"><thead><tr><th>Crawler</th><th>Operator</th><th>Purpose</th><th>Asked to</th></tr></thead><tbody id="ck_rows"></tbody></table>
+    <p class="m" style="font-size:12px"><b>Asked to</b> = what robots.txt says for the home page. <span class="st allowed">allowed</span> no rule keeps it out &middot; <span class="st partial">some paths</span> kept out of parts of the site &middot; <span class="st blocked">blocked</span> kept out of the whole site. &ldquo;via *&rdquo; means the crawler is not named and falls under the default rule.</p>
+    <div class="ck-row">
+      <button class="sm" onclick="ckShare()">Copy share link</button>
+      <button class="sm ghost" onclick="ckTweet()">Post on X</button>
+      <span class="m" id="ck_copied" style="font-size:12px"></span>
+    </div>
+    <details class="ck"><summary>Paste-ready robots.txt to block training crawlers</summary><pre id="ck_snip_train"></pre><button class="sm ghost" onclick="ckCopy('ck_snip_train')">Copy</button></details>
+    <details class="ck"><summary>Paste-ready robots.txt to block all 16 AI crawlers</summary><pre id="ck_snip_all"></pre><button class="sm ghost" onclick="ckCopy('ck_snip_all')">Copy</button></details>
+    <details class="ck" id="ck_raw_wrap"><summary>The site&rsquo;s robots.txt (first 4 KB)</summary><pre id="ck_raw"></pre></details>
+    <div class="note" style="margin-top:16px"><b>robots.txt is a request, not a wall.</b> It only tells you what the site asks; impostors and scrapers ignore it, and so do some well-known bots. The only way to know who actually visits is to measure it &mdash; <a href="/sensors" onclick="return go('/sensors')">add your site in two clicks</a> and it appears on the live map.</div>
+  </div>
+  <div class="note" id="ck_err" style="display:none"></div>
+
+  <h2>Is this IP really that bot?</h2>
+  <p>Something in your server logs calls itself GPTBot or Googlebot. The big operators publish the IP ranges their crawlers use &mdash; paste the IP and we check it against the official list (the same check that catches impostors on the live map).</p>
+  <div class="ck-row">
+    <input id="ip_in" placeholder="e.g. 20.15.240.70" style="flex:1;min-width:180px" autocomplete="off">
+    <select id="ip_bot"></select>
+    <button class="sm" onclick="ipRun()">Verify</button>
+  </div>
+  <div class="ck-verdict" id="ip_out"></div>
+
+  <h2>What we check</h2>
+  <p class="m" style="font-size:14px">Sixteen crawler tokens from OpenAI, Anthropic, Google, Apple, Perplexity, ByteDance, Common Crawl, Meta, Amazon, DuckDuckGo and Mistral, evaluated for the home page with <a href="https://www.rfc-editor.org/rfc/rfc9309" rel="noopener">RFC 9309</a> rules (named group beats <span class="ex">*</span>, longest path match wins, <span class="ex">Allow</span> wins a tie). Results are cached for an hour; private and internal hostnames are refused. We fetch robots.txt only &mdash; never a page.</p>
 </section>
 
 <section class="about" id="page-sensors">
@@ -483,7 +546,7 @@ BOTSPOTTER_KEY = "<span class="en-k"></span>"</pre>
 
 <footer>
   BotSpotter counts bot <em>visits</em> seen by participating sites; no one sees the whole internet. No IPs are stored, bots are named by a hash, humans are counted without cookies.
-  · <a href="/sensors" onclick="return go('/sensors')">add your site</a> · <a href="/claim" onclick="return go('/claim')">claim your bot</a> · <a href="/terms" onclick="return go('/terms')">terms</a> · <a href="/about" onclick="return go('/about')">about</a>
+  · <a href="/check" onclick="return go('/check')">check any site</a> · <a href="/sensors" onclick="return go('/sensors')">add your site</a> · <a href="/claim" onclick="return go('/claim')">claim your bot</a> · <a href="/terms" onclick="return go('/terms')">terms</a> · <a href="/about" onclick="return go('/about')">about</a>
   <div style="margin-top:8px;font-size:11px;opacity:.6">&copy; 2026 Bhushan Arun Ladde · open source under the <a href="https://github.com/bhushanladde02/botspotter/blob/main/LICENSE" rel="license">MIT License</a></div>
 </footer>
 
@@ -861,15 +924,68 @@ function shareX(){ const t = encodeURIComponent(`I just found ${$('m_name').text
 $('modal').addEventListener('click', e => { if(e.target.id==='modal') closeModal(); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
 function go(path){ history.pushState(null,'',path); route(); window.scrollTo(0,0); return false; }
-const PAGES = {'/about':'page-about','/sensors':'page-sensors','/terms':'page-terms','/claim':'page-claim','/stats':'page-stats','/admin':'page-admin'};
+const PAGES = {'/about':'page-about','/check':'page-check','/sensors':'page-sensors','/terms':'page-terms','/claim':'page-claim','/stats':'page-stats','/admin':'page-admin'};
 function route(){ const page = PAGES[location.pathname] || null; document.body.classList.toggle('about-mode', !!page);
   for (const id of Object.values(PAGES)) $(id).style.display = page===id ? 'block' : 'none';
-  $('nav_about').classList.toggle('on', page==='page-about'); $('nav_sensors').classList.toggle('on', page==='page-sensors'||page==='page-terms'); $('nav_claim').classList.toggle('on', page==='page-claim'); $('nav_stats').classList.toggle('on', page==='page-stats'); $('nav_live').classList.toggle('on', !page);
+  $('nav_about').classList.toggle('on', page==='page-about'); $('nav_check').classList.toggle('on', page==='page-check'); $('nav_sensors').classList.toggle('on', page==='page-sensors'||page==='page-terms'); $('nav_claim').classList.toggle('on', page==='page-claim'); $('nav_stats').classList.toggle('on', page==='page-stats'); $('nav_live').classList.toggle('on', !page);
   if (page==='page-stats') loadStats();
+  if (page==='page-check') ckInit();
   if (page==='page-admin') admInit();
   if (page==='page-sensors') enInit();
   if (page==='page-claim') { const q = new URLSearchParams(location.search).get('slug'); if (q) $('claim_slug').value = q; }
   if (!page && map) setTimeout(()=>map.resize(), 50); }
+// ---------- check any site (robots.txt vs AI crawlers) + IP verifier
+const CK_DEFAULTS = ['nytimes.com','reddit.com','wikipedia.org','bbc.com','stackoverflow.com','github.com','medium.com','amazon.com'];
+let ckInited = false, ckLast = null;
+async function ckInit(){
+  const q = new URLSearchParams(location.search).get('site');
+  if (q) $('ck_site').value = q;
+  if (!ckInited){ ckInited = true;
+    try{ const j = await (await fetch(API+'/v1/check/crawlers')).json();
+      const pop = (j.popular||[]).map(p=>p.domain), list = [...new Set([...pop, ...CK_DEFAULTS])].slice(0,10);
+      $('ck_chips').innerHTML = list.map(d=>`<a onclick="ckGo('${esc(d)}')">${esc(d)}</a>`).join('');
+      $('ip_bot').innerHTML = (j.verifiable||[]).map(b=>`<option ${b==='GPTBot'?'selected':''}>${esc(b)}</option>`).join('');
+    }catch(_){ $('ck_chips').innerHTML = CK_DEFAULTS.map(d=>`<a onclick="ckGo('${d}')">${d}</a>`).join(''); }
+  }
+  if (q) ckCheck(q);
+}
+function ckGo(d){ $('ck_site').value = d; ckCheck(d); }
+function ckRun(e){ e.preventDefault(); ckCheck($('ck_site').value); return false; }
+async function ckCheck(site){
+  site = (site||'').trim(); if (!site) return;
+  const btn = $('ck_btn'); btn.disabled = true; btn.textContent = 'Checking…'; $('ck_err').style.display='none';
+  try{
+    const r = await fetch(API+'/v1/check/robots?site='+encodeURIComponent(site)); const j = await r.json();
+    if (!r.ok){ throw new Error(j.error || ('HTTP '+r.status)); }
+    ckLast = j; history.replaceState(null,'','/check?site='+encodeURIComponent(j.domain)); ckRender(j);
+  }catch(err){ $('ck_out').style.display='none'; $('ck_err').style.display='block'; $('ck_err').textContent = String(err.message||err); }
+  btn.disabled = false; btn.textContent = 'Check';
+}
+function ckRender(j){
+  $('ck_out').style.display='block';
+  $('ck_head').innerHTML = `<span style="color:var(--acid)">${esc(j.domain)}</span> · ${esc(j.headline)}`;
+  const when = new Date(j.checked_at*1000);
+  $('ck_meta').textContent = (j.has_robots ? `robots.txt fetched from ${j.url}` : `no usable robots.txt at ${j.url} (HTTP ${j.http_status})`) + ` · checked ${when.toLocaleString()}` + (j.cached ? ' (cached ≤1 h)' : '');
+  $('ck_bars').innerHTML = Object.values(j.by_purpose).map(p => { const pct = p.total ? Math.round(100*p.blocked/p.total) : 0;
+    return `<div class="ck-bar"><small>${esc(p.label)}</small><b>${p.blocked}/${p.total} blocked</b><div class="track"><i style="width:${pct}%"></i></div></div>`; }).join('');
+  const lab = {allowed:'allowed', partial:'some paths', blocked:'blocked'};
+  $('ck_rows').innerHTML = j.rows.map(r => `<tr><td class="tok">${esc(r.token)}</td><td>${esc(r.operator)}</td><td><span class="tag ${esc(r.purpose)}">${esc(r.purpose)}</span><span class="why">${esc(r.note)}</span></td><td><span class="st ${r.status}">${lab[r.status]}</span>${r.via==='wildcard'?' <span class="m" style="font-size:11px">via *</span>':r.via==='none'?' <span class="m" style="font-size:11px">no rules</span>':''}</td></tr>`).join('');
+  $('ck_snip_train').textContent = j.snippet_block_training; $('ck_snip_all').textContent = j.snippet_block_all;
+  $('ck_raw').textContent = j.robots_excerpt || ''; $('ck_raw_wrap').style.display = j.has_robots ? 'block' : 'none';
+  $('ck_copied').textContent = '';
+}
+function ckShare(){ navigator.clipboard.writeText(location.origin+'/check?site='+encodeURIComponent(ckLast.domain)).then(()=>{ $('ck_copied').textContent='link copied'; }); }
+function ckTweet(){ const t = encodeURIComponent(`${ckLast.domain}: ${ckLast.headline} — checked on BotSpotter`); window.open('https://twitter.com/intent/tweet?text='+t+'&url='+encodeURIComponent(location.origin+'/check?site='+ckLast.domain)); }
+function ckCopy(id){ navigator.clipboard.writeText($(id).textContent); $('ck_copied').textContent='copied'; }
+async function ipRun(){
+  const ip = $('ip_in').value.trim(), bot = $('ip_bot').value; const out = $('ip_out'); if (!ip) return;
+  out.textContent = 'checking…';
+  try{ const r = await fetch(API+'/v1/check/ip?ip='+encodeURIComponent(ip)+'&bot='+encodeURIComponent(bot)); const j = await r.json();
+    if (!r.ok) throw new Error(j.error||('HTTP '+r.status));
+    const msg = {verified:`is inside ${j.operator}'s published ranges — a real ${j.bot}.`, impostor:`is NOT in ${j.operator}'s published ranges — something pretending to be ${j.bot}.`, unknown:`cannot be checked: we have no published ranges for ${j.operator} yet.`}[j.verdict];
+    out.innerHTML = `<span class="st ${j.verdict}">${j.verdict}</span> &nbsp;<span class="ex">${esc(j.ip)}</span> ${esc(msg)}` + (j.ranges_updated?`<div class="m" style="font-size:11px;margin-top:4px">ranges updated ${esc(j.ranges_updated)}</div>`:'');
+  }catch(err){ out.innerHTML = `<span class="m">${esc(String(err.message||err))}</span>`; }
+}
 // ---------- claim your bot
 let claimToken = null, claimSlug = null, ownerKey = null;
 async function startClaim(e){ e.preventDefault(); const f = new FormData(e.target); claimSlug = slugOf(f.get('slug'));

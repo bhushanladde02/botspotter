@@ -92,6 +92,35 @@ Read API (public, Redis-only, cache headers on everything)
 
 Every request to the API service also passes through the **self-sensor** middleware: bots that visit the portal are counted under site ``botspotter-portal``.
 
+Check any site (public, no sign-in)
+-----------------------------------
+
+The ``/check`` page. Grades what a site's ``robots.txt`` *asks* 16 AI crawler tokens to do (RFC 9309: a named group
+beats ``*``, longest path match wins, ``Allow`` wins a tie), and verifies whether an IP really belongs to the bot it
+claims to be. It describes requests, never actual traffic — only enrolled sensors give that.
+
+.. list-table::
+   :widths: 34 66
+
+   * - ``GET /v1/check/robots?site=<domain or URL>``
+     - ``{domain, url, http_status, has_robots, headline, rows:[{token, operator, purpose, note, status, via, rules}],
+       blocked, partial, allowed, named, training_allowed, training_total, by_purpose, robots_excerpt,
+       snippet_block_training, snippet_block_all, checked_at, cached}``. ``status`` ∈ ``allowed | partial | blocked``
+       (for the home page; ``partial`` = kept out of some paths), ``via`` ∈ ``named | wildcard | none``. A 404/410 or
+       any other 4xx robots.txt = no restrictions (said so in ``headline``); 429/5xx → ``502`` "temporarily
+       unavailable" (RFC 9309 §2.3.1.4: crawlers must assume disallow, so we cannot grade it). ``400`` for a
+       non-public name, ``429`` after 40 checks per visitor per hour. Cached 1 h per domain (``cached: true``).
+   * - ``GET /v1/check/ip?ip=&bot=``
+     - ``{ip, bot, operator, verdict: verified|impostor|unknown, ranges_known, ranges_updated, bots}`` using the same
+       published ranges as the live map. ``unknown`` = no ranges loaded for that operator; never a false "impostor".
+   * - ``GET /v1/check/crawlers``
+     - The catalogue (token, operator, purpose, note), the verifiable bot names, and the 8 most-checked domains.
+
+Safety: the server fetches a URL the visitor chose. Every hostname is resolved first and all addresses must be
+public (no loopback, private, link-local, multicast, reserved); redirects (max 3) are followed by hand with the
+same check per hop; 8 s timeout; 512 KB cap; only ``/robots.txt`` is ever requested, with a User-Agent that
+links back here.
+
 Audience report
 ---------------
 
