@@ -1,52 +1,1230 @@
 {
   "_doc": "Seed registry of known AI crawlers/agents. Updated by jobs/registry_sync.py. pattern = case-insensitive substring of User-Agent. category: training | search | agent | scraper | seo | other",
-  "version": "2026-10-25",
+  "version": "2026-11-01",
   "bots": [
-    {"pattern": "GPTBot", "operator": "OpenAI", "category": "training", "homepage": "https://platform.openai.com/docs/bots"},
-    {"pattern": "OAI-SearchBot", "operator": "OpenAI", "category": "search", "homepage": "https://platform.openai.com/docs/bots"},
-    {"pattern": "ChatGPT-User", "operator": "OpenAI", "category": "agent", "homepage": "https://platform.openai.com/docs/bots"},
-    {"pattern": "ClaudeBot", "operator": "Anthropic", "category": "training", "homepage": "https://support.anthropic.com"},
-    {"pattern": "Claude-SearchBot", "operator": "Anthropic", "category": "search", "homepage": "https://support.anthropic.com"},
-    {"pattern": "Claude-User", "operator": "Anthropic", "category": "agent", "homepage": "https://support.anthropic.com"},
-    {"pattern": "anthropic-ai", "operator": "Anthropic", "category": "training", "homepage": "https://support.anthropic.com"},
-    {"pattern": "Google-Extended", "operator": "Google", "category": "training", "homepage": "https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers"},
-    {"pattern": "GoogleOther", "operator": "Google", "category": "other", "homepage": "https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers"},
-    {"pattern": "Googlebot", "operator": "Google", "category": "search", "homepage": "https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers"},
-    {"pattern": "Google-CloudVertexBot", "operator": "Google", "category": "agent", "homepage": "https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers"},
-    {"pattern": "PerplexityBot", "operator": "Perplexity", "category": "search", "homepage": "https://docs.perplexity.ai/guides/bots"},
-    {"pattern": "Perplexity-User", "operator": "Perplexity", "category": "agent", "homepage": "https://docs.perplexity.ai/guides/bots"},
-    {"pattern": "Bytespider", "operator": "ByteDance", "category": "training", "homepage": ""},
-    {"pattern": "TikTokSpider", "operator": "ByteDance", "category": "training", "homepage": ""},
-    {"pattern": "CCBot", "operator": "Common Crawl", "category": "training", "homepage": "https://commoncrawl.org/ccbot"},
-    {"pattern": "Meta-ExternalAgent", "operator": "Meta", "category": "training", "homepage": "https://developers.facebook.com/docs/sharing/webmasters/web-crawlers"},
-    {"pattern": "Meta-ExternalFetcher", "operator": "Meta", "category": "agent", "homepage": "https://developers.facebook.com/docs/sharing/webmasters/web-crawlers"},
-    {"pattern": "FacebookBot", "operator": "Meta", "category": "training", "homepage": ""},
-    {"pattern": "Amazonbot", "operator": "Amazon", "category": "training", "homepage": "https://developer.amazon.com/amazonbot"},
-    {"pattern": "Applebot-Extended", "operator": "Apple", "category": "training", "homepage": "https://support.apple.com/en-us/119829"},
-    {"pattern": "Applebot", "operator": "Apple", "category": "search", "homepage": "https://support.apple.com/en-us/119829"},
-    {"pattern": "bingbot", "operator": "Microsoft", "category": "search", "homepage": "https://www.bing.com/webmasters/help/which-crawlers-does-bing-use-8c184ec0"},
-    {"pattern": "DuckAssistBot", "operator": "DuckDuckGo", "category": "search", "homepage": "https://duckduckgo.com/duckduckgo-help-pages/results/duckassistbot/"},
-    {"pattern": "cohere-ai", "operator": "Cohere", "category": "training", "homepage": ""},
-    {"pattern": "Diffbot", "operator": "Diffbot", "category": "scraper", "homepage": "https://www.diffbot.com"},
-    {"pattern": "YouBot", "operator": "You.com", "category": "search", "homepage": "https://about.you.com/youbot/"},
-    {"pattern": "MistralAI-User", "operator": "Mistral", "category": "agent", "homepage": "https://docs.mistral.ai/robots/"},
-    {"pattern": "PetalBot", "operator": "Huawei", "category": "search", "homepage": ""},
-    {"pattern": "Timpibot", "operator": "Timpi", "category": "search", "homepage": ""},
-    {"pattern": "omgili", "operator": "Webz.io", "category": "scraper", "homepage": ""},
-    {"pattern": "img2dataset", "operator": "LAION", "category": "training", "homepage": ""},
-    {"pattern": "ImagesiftBot", "operator": "Hive", "category": "training", "homepage": ""},
-    {"pattern": "AI2Bot", "operator": "Ai2", "category": "training", "homepage": "https://allenai.org/crawler"},
-    {"pattern": "Ai2Bot-Dolma", "operator": "Ai2", "category": "training", "homepage": "https://allenai.org/crawler"},
-    {"pattern": "iaskspider", "operator": "iAsk", "category": "search", "homepage": ""},
-    {"pattern": "Kangaroo Bot", "operator": "Kangaroo", "category": "training", "homepage": ""},
-    {"pattern": "PanguBot", "operator": "Huawei", "category": "training", "homepage": ""},
-    {"pattern": "Scrapy", "operator": "unknown", "category": "scraper", "homepage": "https://scrapy.org"},
-    {"pattern": "SemrushBot", "operator": "Semrush", "category": "seo", "homepage": "https://www.semrush.com/bot/"},
-    {"pattern": "AhrefsBot", "operator": "Ahrefs", "category": "seo", "homepage": "https://ahrefs.com/robot"},
-    {"pattern": "DataForSeoBot", "operator": "DataForSEO", "category": "seo", "homepage": ""},
-    {"pattern": "Webzio-Extended", "operator": "Webz.io", "category": "training", "homepage": ""},
-    {"pattern": "QualifiedBot", "operator": "Qualified", "category": "agent", "homepage": ""},
-    {"pattern": "Devin", "operator": "Cognition", "category": "agent", "homepage": ""},
-    {"pattern": "Brightbot", "operator": "Bright Data", "category": "scraper", "homepage": ""}
+    {
+      "pattern": "AddSearchBot",
+      "operator": "Unclear at this time.",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "AgentDataBot",
+      "operator": "Unclear at this time.",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "AgentTimes",
+      "operator": "[The Agent Times](https://theagenttimes.com/about)",
+      "category": "scraper",
+      "homepage": ""
+    },
+    {
+      "pattern": "AGI Agent",
+      "operator": "AGI, Inc",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "AhrefsBot",
+      "operator": "Ahrefs",
+      "category": "seo",
+      "homepage": "https://ahrefs.com/robot"
+    },
+    {
+      "pattern": "AI2Bot",
+      "operator": "Ai2",
+      "category": "training",
+      "homepage": "https://allenai.org/crawler"
+    },
+    {
+      "pattern": "AI2Bot-DeepResearchEval",
+      "operator": "Ai2, a non-profit AI research institute",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Ai2Bot-Dolma",
+      "operator": "Ai2",
+      "category": "training",
+      "homepage": "https://allenai.org/crawler"
+    },
+    {
+      "pattern": "aiHitBot",
+      "operator": "[aiHit](https://www.aihitdata.com/about)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "AIWebIndex",
+      "operator": "[Lyrenth](https://lyrenth.com)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "amazon-kendra",
+      "operator": "Amazon",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "amazon-QBusiness",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Amazonbot",
+      "operator": "Amazon",
+      "category": "training",
+      "homepage": "https://developer.amazon.com/amazonbot"
+    },
+    {
+      "pattern": "AmazonBuyForMe",
+      "operator": "[Amazon](https://amazon.com)",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Amzn-SearchBot",
+      "operator": "Unclear at this time.",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "Amzn-User",
+      "operator": "Amazon, used for fetching web content to answer user queries through Alexa and other Amazon AI services",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Andibot",
+      "operator": "[Andi](https://andisearch.com/)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "Anomura",
+      "operator": "[Direqt](https://direqt.ai)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "anthropic-ai",
+      "operator": "Anthropic",
+      "category": "training",
+      "homepage": "https://support.anthropic.com"
+    },
+    {
+      "pattern": "ApifyBot",
+      "operator": "Unclear at this time.",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "ApifyWebsiteContentCrawler",
+      "operator": "Unclear at this time.",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Applebot",
+      "operator": "Apple",
+      "category": "search",
+      "homepage": "https://support.apple.com/en-us/119829"
+    },
+    {
+      "pattern": "Applebot-Extended",
+      "operator": "Apple",
+      "category": "training",
+      "homepage": "https://support.apple.com/en-us/119829"
+    },
+    {
+      "pattern": "Aranet-SearchBot",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "atlassian-bot",
+      "operator": "[Atlassian](https://www.atlassian.com)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "Awario",
+      "operator": "Awario",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "AzureAI-SearchBot",
+      "operator": "Unclear at this time.",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "bedrockbot",
+      "operator": "[Amazon](https://amazon.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "bigsur.ai",
+      "operator": "Big Sur AI that fetches website content to enable AI-powered web agents, sales assistants, and content marketing solutions for busi\u2026",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "bingbot",
+      "operator": "Microsoft",
+      "category": "search",
+      "homepage": "https://www.bing.com/webmasters/help/which-crawlers-does-bing-use-8c184ec0"
+    },
+    {
+      "pattern": "BixelBot",
+      "operator": "Unclear at this time.",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Bravebot",
+      "operator": "https://safe.search.brave.com/help/brave-search-crawler",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Brightbot",
+      "operator": "Bright Data",
+      "category": "scraper",
+      "homepage": ""
+    },
+    {
+      "pattern": "Brightbot 1.0",
+      "operator": "https://brightdata.com/brightbot",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "BuddyBot",
+      "operator": "[BuddyBotLearning](https://www.buddybotlearning.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Bytespider",
+      "operator": "ByteDance",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "CartAI Agentic Commerce",
+      "operator": "CartAI that accesses online stores to support user-directed shopping and checkout workflows",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "CCBot",
+      "operator": "Common Crawl",
+      "category": "training",
+      "homepage": "https://commoncrawl.org/ccbot"
+    },
+    {
+      "pattern": "Channel3Bot",
+      "operator": "Unclear at this time.",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "ChatGLM-Spider",
+      "operator": "Unclear at this time.",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "ChatGPT Agent",
+      "operator": "[OpenAI](https://openai.com)",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "ChatGPT-User",
+      "operator": "OpenAI",
+      "category": "agent",
+      "homepage": "https://platform.openai.com/docs/bots"
+    },
+    {
+      "pattern": "Claude-Code",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Claude-SearchBot",
+      "operator": "Anthropic",
+      "category": "search",
+      "homepage": "https://support.anthropic.com"
+    },
+    {
+      "pattern": "Claude-User",
+      "operator": "Anthropic",
+      "category": "agent",
+      "homepage": "https://support.anthropic.com"
+    },
+    {
+      "pattern": "Claude-Web",
+      "operator": "Anthropic",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "ClaudeBot",
+      "operator": "Anthropic",
+      "category": "training",
+      "homepage": "https://support.anthropic.com"
+    },
+    {
+      "pattern": "CledaraBot",
+      "operator": "Cledara that visits SaaS providers to complete customer-approved administrative tasks, including invoice collection and user managem\u2026",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Cloudflare-AutoRAG",
+      "operator": "[Cloudflare](https://developers.cloudflare.com/autorag)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "CloudflareBrowserRenderingCrawler",
+      "operator": "Cloudflare that returns rendered website content for research, monitoring, and AI data workflows",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "CloudVertexBot",
+      "operator": "Unclear at this time.",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "Code",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Codex",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "cohere-ai",
+      "operator": "Cohere",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "cohere-training-data-crawler",
+      "operator": "Cohere to download training data for its LLMs (Large Language Models) that power its enterprise AI products",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "Cotoyogi",
+      "operator": "[ROIS](https://ds.rois.ac.jp/en_center8/en_crawler/)",
+      "category": "scraper",
+      "homepage": ""
+    },
+    {
+      "pattern": "CragCrawler",
+      "operator": "CragSoftware, a Brazil-based software company specializing in data engineering and AI web scraping services",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Crawl4AI",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Crawlspace",
+      "operator": "[Crawlspace](https://crawlspace.dev)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Cursor",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "DataForSeoBot",
+      "operator": "DataForSEO",
+      "category": "seo",
+      "homepage": ""
+    },
+    {
+      "pattern": "Datenbank Crawler",
+      "operator": "Datenbank",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "DeepSeekBot",
+      "operator": "DeepSeek",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Devin",
+      "operator": "Cognition",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Diffbot",
+      "operator": "Diffbot",
+      "category": "scraper",
+      "homepage": "https://www.diffbot.com"
+    },
+    {
+      "pattern": "Diffbot-User",
+      "operator": "[Diffbot](https://www.diffbot.com/)",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Dot",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "DoubaoBot",
+      "operator": "ByteDance",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "DuckAssistBot",
+      "operator": "DuckDuckGo",
+      "category": "search",
+      "homepage": "https://duckduckgo.com/duckduckgo-help-pages/results/duckassistbot/"
+    },
+    {
+      "pattern": "Echobot Bot",
+      "operator": "Echobox",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "EchoboxBot",
+      "operator": "[Echobox](https://echobox.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "ElevenlabsBot",
+      "operator": "[ElevenLabs](https://elevenlabs.io)",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "ElevenlabsCrawler",
+      "operator": "[ElevenLabs](https://elevenlabs.io)",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "ERNIEBot",
+      "operator": "Baidu",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "ExaBot",
+      "operator": "Unclear at this time.",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "ExaSearchBot",
+      "operator": "[Exa](https://exa.ai)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "ExaUser",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "FacebookBot",
+      "operator": "Meta",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "facebookexternalhit",
+      "operator": "Meta/Facebook",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Factset_spyderbot",
+      "operator": "[Factset](https://www.factset.com/ai)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "FirecrawlAgent",
+      "operator": "Firecrawl that extracts web content and converts it into structured data for use in LLM and AI applications",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "FriendlyCrawler",
+      "operator": "Unknown",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "GeistHaus-PageFetcher",
+      "operator": "GeistHaus, a company developing AI systems for therapy and psychological assessment",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Gemini-Deep-Research",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Google-Agent",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Google-CloudVertexBot",
+      "operator": "Google",
+      "category": "agent",
+      "homepage": "https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers"
+    },
+    {
+      "pattern": "Google-Extended",
+      "operator": "Google",
+      "category": "training",
+      "homepage": "https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers"
+    },
+    {
+      "pattern": "Google-Firebase",
+      "operator": "Google",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Google-Gemini-CLI",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Google-NotebookLM",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "GoogleAgent-Mariner",
+      "operator": "Google",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "GoogleAgent-URLContext",
+      "operator": "Google that retrieves web content on behalf of Gemini API users",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Googlebot",
+      "operator": "Google",
+      "category": "search",
+      "homepage": "https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers"
+    },
+    {
+      "pattern": "GoogleOther",
+      "operator": "Google",
+      "category": "other",
+      "homepage": "https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers"
+    },
+    {
+      "pattern": "GoogleOther-Image",
+      "operator": "Google",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "GoogleOther-Video",
+      "operator": "Google",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "GPTBot",
+      "operator": "OpenAI",
+      "category": "training",
+      "homepage": "https://platform.openai.com/docs/bots"
+    },
+    {
+      "pattern": "Grok Bot",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "GrokAppAndroid",
+      "operator": "[xAI](https://x.ai)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "GrokBot",
+      "operator": "[xAI](https://x.ai)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "HarkBot",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "HenkBot",
+      "operator": "Unclear at this time.",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Hunyuan",
+      "operator": "[Tencent](https://hunyuan.tencent.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "iAskBot",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "iaskspider",
+      "operator": "iAsk",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "iaskspider/2.0",
+      "operator": "iAsk",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "ICC-Crawler",
+      "operator": "[NICT](https://nict.go.jp)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "ImagesiftBot",
+      "operator": "Hive",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "imageSpider",
+      "operator": "Unclear at this time.",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "img2dataset",
+      "operator": "LAION",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "Instinct",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "ISSCyberRiskCrawler",
+      "operator": "[ISS-Corporate](https://iss-cyber.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "kagi-fetcher",
+      "operator": "Kagi that fetches web content to answer user queries through Kagi AI, their suite of AI-powered tools including Assistant, Res\u2026",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Kangaroo Bot",
+      "operator": "Kangaroo",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "KeenableBot",
+      "operator": "[Keenable](https://keenable.ai/)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "Kimi-Agent",
+      "operator": "Moonshot AI that browses websites while carrying out user-directed research and other tasks",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Kimi-SearchBot",
+      "operator": "[Moonshot AI](https://www.moonshot.ai)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "Kimi-User",
+      "operator": "Moonshot AI that fetches web content on behalf of users interacting with Kimi",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "KimiBot",
+      "operator": "[Moonshot AI](https://www.moonshot.ai)",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "KlaviyoAIBot",
+      "operator": "[Klaviyo](https://www.klaviyo.com)",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "KunatoCrawler",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "laion-huggingface-processor",
+      "operator": "Unclear at this time.",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "LAIONDownloader",
+      "operator": "[Large-scale Artificial Intelligence Open Network](https://laion.ai/)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "LCC",
+      "operator": "Unclear at this time.",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "Lightpanda",
+      "operator": "Anyone who downloads the Lightpanda client. Possibly being used by a [Grok-adjacent](https://github.com/lightpanda-io/browser/issues/3156#issuecomment-5217843616) organization's botnet.",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "LinerBot",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Linguee Bot",
+      "operator": "[Linguee](https://www.linguee.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "LinkupBot",
+      "operator": "Unclear at this time.",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "Manus-User",
+      "operator": "Butterfly Effect, a company based in China",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Meta-ExternalAgent",
+      "operator": "Meta",
+      "category": "training",
+      "homepage": "https://developers.facebook.com/docs/sharing/webmasters/web-crawlers"
+    },
+    {
+      "pattern": "Meta-ExternalFetcher",
+      "operator": "Meta",
+      "category": "agent",
+      "homepage": "https://developers.facebook.com/docs/sharing/webmasters/web-crawlers"
+    },
+    {
+      "pattern": "meta-webindexer",
+      "operator": "[Meta](https://developers.facebook.com/docs/sharing/webmasters/web-crawlers/)",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "MistralAI-Index",
+      "operator": "Mistral AI",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "MistralAI-Training",
+      "operator": "[Mistral AI](https://mistral.ai)",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "MistralAI-User",
+      "operator": "Mistral",
+      "category": "agent",
+      "homepage": "https://docs.mistral.ai/robots/"
+    },
+    {
+      "pattern": "MistralAI-User/1.0",
+      "operator": "Mistral AI",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "MoonshotBot",
+      "operator": "[Kimi](https://www.kimi.ai/)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Mozilla-Tabstack",
+      "operator": "Mozilla that performs programmatic, AI-driven interactions with web content through Tabstack",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Muse",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "MyCentralAIScraperBot",
+      "operator": "Unclear at this time.",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "NagetBot",
+      "operator": "Naget Inc (founded by Chris Samarinas, headquarter in Amherst, Massachusetts)",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "nbot",
+      "operator": "[NBot](https://nbot.ai)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "netEstate Imprint Crawler",
+      "operator": "netEstate",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "newsai",
+      "operator": "Unclear at this time.",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "NotebookLM",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "NovaAct",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "OAI-AdsBot",
+      "operator": "[OpenAI](https://openai.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "OAI-SearchBot",
+      "operator": "OpenAI",
+      "category": "search",
+      "homepage": "https://platform.openai.com/docs/bots"
+    },
+    {
+      "pattern": "omgili",
+      "operator": "Webz.io",
+      "category": "scraper",
+      "homepage": ""
+    },
+    {
+      "pattern": "omgilibot",
+      "operator": "[Webz.io](https://webz.io/)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "OpenAI",
+      "operator": "[OpenAI](https://openai.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "opencode",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Operator",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "PanguBot",
+      "operator": "Huawei",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "Panscient",
+      "operator": "[Panscient](https://panscient.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "panscient.com",
+      "operator": "[Panscient](https://panscient.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Payhawk Invoice Fetching Agent",
+      "operator": "Payhawk that retrieves invoices from supplier websites for users and attaches them to expense records",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Perplexity-User",
+      "operator": "Perplexity",
+      "category": "agent",
+      "homepage": "https://docs.perplexity.ai/guides/bots"
+    },
+    {
+      "pattern": "PerplexityBot",
+      "operator": "Perplexity",
+      "category": "search",
+      "homepage": "https://docs.perplexity.ai/guides/bots"
+    },
+    {
+      "pattern": "PetalBot",
+      "operator": "Huawei",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "PhindBot",
+      "operator": "[phind](https://www.phind.com/)",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Poggio-Citations",
+      "operator": "Poggio, a company that provides AI sales enablement tools for creating tailored narratives, business cases, and account plan\u2026",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Poseidon Research Crawler",
+      "operator": "[Poseidon Research](https://www.poseidonresearch.com)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "qodercli",
+      "operator": "Qoder that helps developers build, debug, and modify software from the terminal",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "QualifiedBot",
+      "operator": "Qualified",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Querit-SearchBot",
+      "operator": "Querit that indexes web content for their search API service, which is designed to provide real-time search results for larg\u2026",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "QueritBot",
+      "operator": "Querit, a company providing a search API for large language model integration",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "QuillBot",
+      "operator": "[Quillbot](https://quillbot.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "quillbot.com",
+      "operator": "[Quillbot](https://quillbot.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "QwenBot",
+      "operator": "Alibaba",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Reflectionbot",
+      "operator": "[Reflection](https://reflection.ai/)",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "SBIntuitionsBot",
+      "operator": "[SB Intuitions](https://www.sbintuitions.co.jp/en/)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Scrapy",
+      "operator": "[Zyte](https://www.zyte.com)",
+      "category": "scraper",
+      "homepage": "https://scrapy.org"
+    },
+    {
+      "pattern": "ScryBot",
+      "operator": "[Scry](https://scry.io/)",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "SemrushBot",
+      "operator": "Semrush",
+      "category": "seo",
+      "homepage": "https://www.semrush.com/bot/"
+    },
+    {
+      "pattern": "SemrushBot-OCOB",
+      "operator": "[Semrush](https://www.semrush.com/)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "SemrushBot-SWA",
+      "operator": "[Semrush](https://www.semrush.com/)",
+      "category": "seo",
+      "homepage": ""
+    },
+    {
+      "pattern": "Shap-User",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "ShapBot",
+      "operator": "[Parallel](https://parallel.ai)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Sidetrade indexer bot",
+      "operator": "[Sidetrade](https://www.sidetrade.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Spider",
+      "operator": "Unclear at this time.",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "TavilyBot",
+      "operator": "Unclear at this time.",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Terra Cotta",
+      "operator": "Unclear at this time.",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "TerraCotta",
+      "operator": "[Ceramic AI](https://ceramic.ai/)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "Thinkbot",
+      "operator": "[Thinkbot](https://www.thinkbot.agency)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "TikTokSpider",
+      "operator": "ByteDance",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "Timpibot",
+      "operator": "Timpi",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "TongyiBot",
+      "operator": "Alibaba that fetches web content for the Tongyi Qianwen assistant and related Qwen-generated answers",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "Trae",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "TwinAgent",
+      "operator": "Twin, a platform that creates automated workers to perform tasks by integrating with APIs and controlling web applications through browser automa\u2026",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "UseAI",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "VelenPublicWebCrawler",
+      "operator": "[Velen Crawler](https://velen.io)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "WARDBot",
+      "operator": "WEBSPARK",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "Webzio-Extended",
+      "operator": "Webz.io",
+      "category": "training",
+      "homepage": ""
+    },
+    {
+      "pattern": "wpbot",
+      "operator": "[QuantumCloud](https://www.quantumcloud.com)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "WRTNBot",
+      "operator": "Unclear at this time.",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "xAI-Grok",
+      "operator": "[xAI](https://x.ai/)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "YaK",
+      "operator": "[Meltwater](https://www.meltwater.com/en/suite/consumer-intelligence)",
+      "category": "search",
+      "homepage": ""
+    },
+    {
+      "pattern": "YandexAdditional",
+      "operator": "[Yandex](https://yandex.ru)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "YandexAdditionalBot",
+      "operator": "[Yandex](https://yandex.ru)",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "YiBot",
+      "operator": "[01.ai](https://01.ai/), an AI company founded by Kai-Fu Lee.",
+      "category": "other",
+      "homepage": ""
+    },
+    {
+      "pattern": "YiyanBot",
+      "operator": "Baidu that fetches web content for the yiyan",
+      "category": "agent",
+      "homepage": ""
+    },
+    {
+      "pattern": "YouBot",
+      "operator": "You.com",
+      "category": "search",
+      "homepage": "https://about.you.com/youbot/"
+    },
+    {
+      "pattern": "ZanistaBot",
+      "operator": "Unclear at this time.",
+      "category": "search",
+      "homepage": ""
+    }
   ]
 }
