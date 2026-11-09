@@ -631,6 +631,16 @@ class Counters:
         rows = await self.r.lrange("bs:sightings", 0, limit - 1)
         return [orjson.loads(x) for x in rows]
 
+    async def bot_slugs(self, limit: int = 5000) -> list[str]:
+        """Slugs of every named bot, busiest first (the feed list is capped at FEED_MAX; this is not)."""
+        fps = await self.r.zrevrange("bs:bots", 0, limit - 1)
+        if not fps:
+            return []
+        p = self.r.pipeline(transaction=False)
+        for fp in fps:
+            p.hget(f"bs:bot:{fp.decode() if isinstance(fp, bytes) else fp}", "slug")
+        return [x.decode() if isinstance(x, bytes) else x for x in await p.execute() if x]
+
     async def feed(self, limit: int = 50) -> list[dict]:
         rows = await self.r.lrange("bs:feed", 0, limit - 1)
         return [orjson.loads(x) for x in rows]

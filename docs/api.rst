@@ -114,7 +114,8 @@ claims to be. It describes requests, never actual traffic — only enrolled sens
      - ``{ip, bot, operator, verdict: verified|impostor|unknown, ranges_known, ranges_updated, bots}`` using the same
        published ranges as the live map. ``unknown`` = no ranges loaded for that operator; never a false "impostor".
    * - ``GET /v1/check/crawlers``
-     - The catalogue (token, operator, purpose, note), the verifiable bot names, and the 8 most-checked domains.
+     - The catalogue (token, operator, purpose, note), the verifiable bot names, the 8 most-checked domains, and
+       ``totals: {checks, sites}`` (site-wide counters; errors are not counted).
 
 Safety: the server fetches a URL the visitor chose. Every hostname is resolved first and all addresses must be
 public (no loopback, private, link-local, multicast, reserved); redirects (max 3) are followed by hand with the

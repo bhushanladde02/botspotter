@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-11-09 00:45
+     - (1) The site-wide "N checks on M sites" line on ``/check`` never showed: #17 shipped the page half of the tracker but not ``Checker.totals()`` / ``totals`` in ``/v1/check/crawlers`` (the batch was re-packed after the branch was committed). Restored, with its test and docs. (2) ``/sitemap.xml`` listed only the 200 bots in the capped discovery feed (449 exist) and no ``/check`` results — now every named bot (busiest first, up to 5,000) via ``Counters.bot_slugs()`` plus the 20 most-checked ``/check?site=`` pages, so crawlers can find all of them
+     - Bhushan
    * - 2026-10-31 11:20
      - Support for integrations: "Need a hand integrating?" section on ``/sensors`` with a pre-filled e-mail (subject + stack/where-stuck template) and a GitHub-issue link; ``contact`` link in the footer. Every ``hello@botspotter.app`` mention (page, terms, claims, docs) now points to ``bhushanladde02@gmail.com`` — that mailbox was never created, so key requests and abuse reports would have bounced
      - Bhushan
