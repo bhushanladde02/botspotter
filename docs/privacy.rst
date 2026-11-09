@@ -74,7 +74,9 @@ Check any site
 request to a site that did not install a sensor. We request that one file only, identify ourselves in the
 User-Agent with a link here, cache the result for an hour, and never fetch a page. The domain checked is counted
 (for the "most checked" chips); the visitor's IP is hashed for the hourly rate limit and not stored; the IP a
-visitor types into the verifier is matched against published ranges in-process and not stored.
+visitor types into the verifier is matched against published ranges in-process and not stored. The "your checks"
+list on the page lives in the visitor's own browser (``localStorage`` key ``bs_checks``, last 50 domains with their
+grade and count) and is never sent to the server; the page offers a one-click clear.
 
 Claims
 ------

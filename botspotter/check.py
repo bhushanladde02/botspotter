@@ -275,6 +275,13 @@ class Checker:
         rows = await self.r.zrevrange("bs:check:top", 0, n - 1, withscores=True)
         return [{"domain": d.decode() if isinstance(d, bytes) else d, "checks": int(s)} for d, s in rows]
 
+    async def totals(self) -> dict:
+        """Site-wide tracker: how many checks, on how many distinct domains."""
+        p = self.r.pipeline(transaction=False)
+        p.get("bs:check:count"); p.zcard("bs:check:top")
+        n, sites = await p.execute()
+        return {"checks": int(n or 0), "sites": int(sites or 0)}
+
     def ip(self, ip: str, bot: str) -> dict:
         bot_token = next((b for b in VERIFIABLE_BOTS if b.lower() == (bot or "").lower()), None)
         try:

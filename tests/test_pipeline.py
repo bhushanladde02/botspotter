@@ -281,6 +281,14 @@ async def test_discoverability_endpoints(world):
     r = await ac.get("/badge/dev-site.svg"); assert r.status_code == 200 and "<svg" in r.text and ">2<" in r.text
     r = await ac.get("/badge/nobody.svg"); assert r.status_code == 200 and ">0<" in r.text
     r = await ac.get("/static/og.svg"); assert r.status_code == 200
+    # sitemap is built from the full bot index, not the discovery feed (which is capped at FEED_MAX)
+    slug = (await counters.bot_slugs())[0]
+    await counters.r.delete("bs:feed")
+    for i in range(250):
+        await counters.r.zadd("bs:bots", {f"fp{i}": 1}); await counters.r.hset(f"bs:bot:fp{i}", "slug", f"extra-bot-{i}")
+    sm = (await ac.get("/sitemap.xml")).text
+    assert f"/bot/{slug}</loc>" in sm and sm.count("/bot/") == 251
+    import xml.dom.minidom; xml.dom.minidom.parseString(sm)          # still well-formed XML
 
 
 async def test_watching_now_and_audience_report(world):

@@ -126,7 +126,9 @@ async def test_check_routes_cache_and_popular(api):
     pop = (await api.get("/v1/check/crawlers")).json()
     assert pop["popular"][0]["domain"] == "nyt.test" and pop["popular"][0]["checks"] == 2
     assert {c["token"] for c in pop["crawlers"]} >= {"GPTBot", "ClaudeBot", "Google-Extended", "CCBot"}
-    assert "/check" in (await api.get("/sitemap.xml")).text
+    assert pop["totals"] == {"checks": 6, "sites": 5}                              # nyt×2, open, spa, forbid, pypi; errors not counted
+    sm = (await api.get("/sitemap.xml")).text
+    assert "/check</loc>" in sm and "/check?site=nyt.test</loc>" in sm           # most-checked pages are crawlable
 
 
 async def test_check_rate_limit_per_visitor(api):

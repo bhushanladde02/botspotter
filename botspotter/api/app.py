@@ -195,12 +195,15 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
 
     @app.get("/sitemap.xml")
     async def sitemap(request: Request):
-        feed = await request.app.state.counters.feed(200)
+        # Every named bot (not just the capped discovery feed) + the most-checked /check pages, so crawlers
+        # can find all of them. Sitemap limit is 50k URLs; we cap at 5,000 bots + 20 checks.
+        from urllib.parse import quote
         urls = ["https://botspotter.app/", "https://botspotter.app/about", "https://botspotter.app/check",
                 "https://botspotter.app/sensors", "https://botspotter.app/claim", "https://botspotter.app/terms"]
-        urls += [f"https://botspotter.app/bot/{f['slug']}" for f in feed if f.get("slug")]
+        urls += [f"https://botspotter.app/bot/{quote(slug)}" for slug in await request.app.state.counters.bot_slugs(5000)]
+        urls += [f"https://botspotter.app/check?site={quote(p['domain'])}" for p in await request.app.state.checker.popular(20)]
         xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + \
-              "".join(f"<url><loc>{u}</loc></url>" for u in urls) + "</urlset>"
+              "".join(f"<url><loc>{u.replace('&', '&amp;')}</loc></url>" for u in urls) + "</urlset>"
         return Response(xml, media_type="application/xml", headers={"Cache-Control": "public, max-age=600"})
 
     @app.get("/feed.xml")
@@ -469,7 +472,8 @@ def create_app(counters: Counters | None = None, stream=None, enricher: Enricher
 
     @app.get("/v1/check/crawlers")
     async def check_crawlers(request: Request):
-        return cached({**crawler_catalog(), "popular": await request.app.state.checker.popular(8)}, 120)
+        chk = request.app.state.checker
+        return cached({**crawler_catalog(), "popular": await chk.popular(8), "totals": await chk.totals()}, 60)
 
     @app.get("/v1/sites")
     async def sites(request: Request):
