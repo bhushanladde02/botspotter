@@ -106,7 +106,9 @@ Operations
 +==========================================+============================================================================================================================+
 | Scale ingest                             | ``docker compose up -d --scale ingest=3``                                                                                  |
 +------------------------------------------+----------------------------------------------------------------------------------------------------------------------------+
-| Rebuild Redis from Postgres              | see header of ``scripts/rebuild_counters.py``                                                                              |
+| Repair inflated bot counters (no wipe)   | ``python -m botspotter.repair`` — see "Repair inflated counters" below                                                     |
++------------------------------------------+----------------------------------------------------------------------------------------------------------------------------+
+| Rebuild Redis from Postgres (FULL WIPE)  | header of ``scripts/rebuild_counters.py`` — last resort: FLUSHDB deletes keys, enrollments, claims, humans                 |
 +------------------------------------------+----------------------------------------------------------------------------------------------------------------------------+
 | Replay last 7 days into a fresh consumer | ``docker compose exec redpanda rpk group seek aggregator --to start`` (stop aggregator first)                              |
 +------------------------------------------+----------------------------------------------------------------------------------------------------------------------------+
@@ -254,8 +256,42 @@ Health checks
    aggregator replays it when it comes back. The deploy smoke test now fails on this condition (snapshot age > 10 s or
    aggregator not ``Up`` six seconds after the smoke hit). First occurrence: 2026-10-26, missing package data (see the
    operations log).
+-  **Watchdog**: ``.github/workflows/watchdog.yml`` checks ``/v1/snapshot`` every 15 min; older than 10 min (or
+   unreachable) opens one ``incident`` issue assigned to the owner (email), and closes it when the snapshot is fresh
+   again. GitHub pauses scheduled workflows after 60 days with no repo activity — re-enable under Actions if so.
+-  **Counts suddenly far too high / a sensor or map cell with more hits than the total**: the aggregator crashed after
+   counting a batch but before committing it, and every restart re-applied it (2026-11-12). Since then a batch that
+   fails 3 times is parked in ``bs:agg:poison`` (``LRANGE bs:agg:poison 0 -1``) and skipped, and
+   ``bs:errors:poison_batches`` counts how often. Fix the cause, then repair the counters (below).
 -  ``rpk cluster health`` must say ``Healthy: true``.
 -  Redis ``INFO memory`` ``used_memory`` < 230 MB (eviction is ``noeviction``; a full Redis makes the aggregator error).
+
+Repair inflated counters
+------------------------
+
+``botspotter.repair`` rebuilds only the keys a bot event increments — ``bs:total`` (+ daily/hourly), ``bs:bots``,
+``bs:country``, ``bs:cat``, ``bs:op``, ``bs:sensors``, ``bs:gh:*``, per-bot hourly/countries/geo — from the Postgres
+``events`` table, and restores ``bs:verified``/``bs:impostors``/``bs:impostors:op``/``bs:cloud`` from the last good
+snapshot (Postgres does not store those). Sensor keys, enrollments, sessions, claims, bot names, sightings and human
+counts are not touched. Dry run first; it refuses to apply if Postgres has >2% fewer events than the snapshot.
+
+First, while the aggregator is still stopped, keep the last good snapshot — a restarted aggregator overwrites
+``bs:snapshot`` with the inflated numbers::
+
+   ssh -i ~/.ssh/sharpen_vm ubuntu@129.213.153.181
+   cd ~/botspotter
+   C="docker compose -f docker-compose.yml -f docker-compose.vm.yml"
+   $C exec -T redis redis-cli COPY bs:snapshot bs:snapshot:good
+
+Then (after the fix is deployed, if one is needed)::
+
+   $C stop aggregator
+   $C run --rm --no-deps aggregator python -m botspotter.repair --snapshot-key bs:snapshot:good            # dry run
+   $C run --rm --no-deps aggregator python -m botspotter.repair --snapshot-key bs:snapshot:good --apply    # write
+   $C start aggregator
+
+Trust/cloud counts processed between the snapshot and the repair are lost (they cannot be recounted); everything else
+is exact. Postgres keeps 90 days of ``events``, so repair after that window loses older history.
 
 Known gaps (v1)
 ---------------

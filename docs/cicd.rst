@@ -103,6 +103,9 @@ owner's explicit approval; GitHub enforces it (next section), the scripts make i
 8. **If anything fails on ``main`` after the merge** (``ci`` or ``deploy``): ``alarm.yml`` opens an issue labelled
    ``incident``, assigned to the owner (= email + notification) with the failed run, the last known good SHA, a
    one-click **rollback** link (``rollback.yml`` → paste the SHA → approve) and the ask for a new MR with the fix.
+9. **If production stops counting at any time** (not tied to a merge): ``watchdog.yml`` runs every 15 min, and a
+   snapshot older than 10 min opens one ``incident``/``watchdog`` issue assigned to the owner; it closes itself on
+   recovery.
 
 The AI/safety gate (``scripts/pr_gate.py``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -141,7 +144,7 @@ What it sets:
    ``environment: production``) pauses with *Review deployments* on every run; only ``main`` may deploy to it.
 3. **Actions hardening**: workflow token read-only; workflows cannot approve PRs; fork PRs from outside contributors
    need approval before CI even runs.
-4. **Workflows** ``gate.yml``, ``rollback.yml``, ``alarm.yml`` copied from ``deploy/github/workflows/`` into
+4. **Workflows** ``gate.yml``, ``rollback.yml``, ``alarm.yml``, ``watchdog.yml`` copied from ``deploy/github/workflows/`` into
    ``.github/workflows/`` if missing (commit them). ``gate`` is a required status check.
 
 Working flow (the owner's own changes go through the same door)::
