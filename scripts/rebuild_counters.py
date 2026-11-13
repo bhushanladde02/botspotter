@@ -1,5 +1,9 @@
 """Rebuild every Redis counter from Postgres (the source of truth).
 
+LAST RESORT. The full Redis wipe below also deletes sensor keys, enrollments, sessions, claims, bot
+names and human counts, which Postgres cannot restore. For inflated or wrong *bot counters*
+use `python -m botspotter.repair` instead (no wipe; see docs/runbook.rst).
+
 Use after a Redis loss or a counting bug. Safe to run while live: it writes
 into a scratch key prefix is NOT implemented in v1 — stop the aggregator,
 FLUSHDB, run this, start the aggregator. Takes ~1 min per 10M events.

@@ -10,6 +10,9 @@ Append-only. One row per change to production, newest first (add a new ``* -`` b
    * - date (PT)
      - what
      - by
+   * - 2026-11-12 23:55
+     - **Incident: counters inflated ~25× and frozen for 9.7 h** (14:05 → stopped 23:50). A sharpen burst produced a batch of >100 events; ``record_bot_events`` published one live-map message per event with ``asyncio.gather``, which needs a connection each, and redis-py 8 *raises* ``MaxConnectionsError`` past its 100-connection pool instead of waiting. The crash came after the counters were written and before the Redpanda commit, so every restart (consumer-group generation 2509) re-applied the batch: ``bs:total`` 12k → 300,020, sharpen 291,799, one map cell 288,927, while the page showed the last good snapshot (14:05:19). Postgres stayed clean (store write comes later). Found from a screenshot (cell > total). Aggregator stopped by the owner at 23:50 (events queued in Redpanda). Fix (PR): live publish sequential + never fatal; a batch failing 3× is parked in ``bs:agg:poison`` and skipped; ``python -m botspotter.repair`` recounts bot counters from Postgres without FLUSHDB; ``watchdog.yml`` opens an incident when the snapshot is >10 min old. Tests reproduce the 150-connection fan-out
+     - Bhushan
    * - 2026-11-09 00:45
      - (1) The site-wide "N checks on M sites" line on ``/check`` never showed: #17 shipped the page half of the tracker but not ``Checker.totals()`` / ``totals`` in ``/v1/check/crawlers`` (the batch was re-packed after the branch was committed). Restored, with its test and docs. (2) ``/sitemap.xml`` listed only the 200 bots in the capped discovery feed (449 exist) and no ``/check`` results — now every named bot (busiest first, up to 5,000) via ``Counters.bot_slugs()`` plus the 20 most-checked ``/check?site=`` pages, so crawlers can find all of them
      - Bhushan

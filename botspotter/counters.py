@@ -44,7 +44,7 @@ Key layout (all prefixed ``bs:``)::
 """
 from __future__ import annotations
 
-import asyncio
+import logging
 import time
 from datetime import datetime, timezone
 
@@ -55,6 +55,8 @@ from .config import settings
 from .fingerprint import slugify_name
 from .sensors import SensorSites
 from .models import BotEvent, PortalVisit
+
+log = logging.getLogger("botspotter.counters")
 
 FEED_MAX = 200
 TOP_N = 25
@@ -198,10 +200,23 @@ class Counters:
             p.expire(f"bs:discover:{e.fp}", settings.discovery_window_s)
         p.ltrim("bs:sightings", 0, SIGHTINGS_MAX - 1)
         await p.execute()
-        # Published outside the pipeline: pub/sub inside MULTI is fine on Redis but
-        # fakeredis drops it, and the tests must see what production sees.
+        # Live map fan-out, AFTER the counters are applied — so it must never raise: an
+        # exception here used to crash the aggregator before the batch was committed, and
+        # the restart re-applied the same batch (2026-11-12: one batch replayed 2,509 times,
+        # bs:total 12k -> 300k). It also must not open a connection per message: the old
+        # asyncio.gather() did, and a batch > 100 events exhausted redis-py 8's pool
+        # (MaxConnectionsError instead of waiting). One connection, sequential, best-effort.
+        # (Outside the pipeline because fakeredis drops PUBLISH inside one.)
         if live:
-            await asyncio.gather(*(self.r.publish(LIVE_CHANNEL, m) for m in live))
+            try:
+                for m in live:
+                    await self.r.publish(LIVE_CHANNEL, m)
+            except Exception:  # noqa: BLE001 - live map is decoration; counts are already in
+                log.exception("live publish failed for %d sightings (counts unaffected)", len(live))
+                try:
+                    await self.r.incr("bs:errors:live_publish")
+                except Exception:  # pragma: no cover
+                    pass
 
         # Discovery check for anything that is a heuristic (unknown) bot.
         discovered: list[dict] = []

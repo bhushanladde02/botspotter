@@ -13,6 +13,7 @@ events table is the source of truth and can rebuild Redis (scripts/rebuild_count
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import signal
 import time
@@ -24,6 +25,12 @@ from ..store import make_store
 from ..stream import make_stream
 
 log = logging.getLogger("botspotter.aggregator")
+
+# A batch that fails this many times in a row is skipped (committed without counting) and
+# parked in bs:agg:poison for inspection. Counters are applied before commit, so every failed
+# attempt that got past the Redis write double-counts; without a cap a deterministic bug
+# replays one batch forever (2026-11-12: 2,509 times in 9.7 h). With it: at most MAX - 1 extras.
+MAX_BATCH_ATTEMPTS = 3
 
 
 class Aggregator:
@@ -73,14 +80,37 @@ class Aggregator:
             except Exception:  # pragma: no cover
                 pass
 
+    @staticmethod
+    def batch_id(msgs) -> str:
+        """Stable id for a polled batch across restarts: messages carry no offsets here,
+        but event payloads are unique (ts + fingerprint), so first+last+count identify it."""
+        h = hashlib.sha256()
+        h.update(msgs[0].value); h.update(msgs[-1].value); h.update(str(len(msgs)).encode())
+        return h.hexdigest()[:20]
+
     async def run_once(self, timeout_s: float = 0.5) -> int:
         msgs = await self.stream.poll(
             [settings.topic_bot_events, settings.topic_portal_visits],
             settings.consumer_group, settings.flush_batch_size, timeout_s,
         )
-        n = await self.process(msgs)
-        if msgs:
+        if not msgs:
+            return 0
+        key = f"bs:agg:attempt:{self.batch_id(msgs)}"
+        attempt = await self.counters.r.incr(key)
+        await self.counters.r.expire(key, 86400)
+        if attempt > MAX_BATCH_ATTEMPTS:
+            log.error("batch %s failed %d times; skipping %d messages (parked in bs:agg:poison)",
+                      key, attempt - 1, len(msgs))
+            p = self.counters.r.pipeline(transaction=False)
+            p.incr("bs:errors:poison_batches")
+            p.lpush("bs:agg:poison", f"{key} n={len(msgs)} first={msgs[0].value[:300]!r}")
+            p.ltrim("bs:agg:poison", 0, 49)
+            await p.execute()
             await self.stream.commit()
+            return 0
+        n = await self.process(msgs)
+        await self.stream.commit()
+        await self.counters.r.delete(key)
         return n
 
     async def run(self) -> None:
