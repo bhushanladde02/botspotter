@@ -21,16 +21,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from botspotter.verify import SOURCES  # noqa: E402
 
 
+def parse(data) -> list[str]:
+    """Prefixes from an operator's JSON. Accepts the common shape ({"prefixes": [{"ipv4Prefix": ...} |
+    {"ipv6Prefix": ...}]}) plus bare lists of CIDR strings or dicts with ip_prefix/prefix/cidr keys,
+    so a vendor's slightly different file still loads instead of silently contributing nothing."""
+    items = data.get("prefixes", data.get("ranges", [])) if isinstance(data, dict) else data
+    out = []
+    for p in items or []:
+        if isinstance(p, str):
+            out.append(p.strip())
+            continue
+        if isinstance(p, dict):
+            for k in ("ipv4Prefix", "ipv6Prefix", "ip_prefix", "ipv6_prefix", "prefix", "cidr"):
+                if p.get(k):
+                    out.append(str(p[k]).strip())
+    return [x for x in out if x]
+
+
 def fetch(url: str) -> list[str]:
     req = urllib.request.Request(url, headers={"User-Agent": "BotSpotter range sync (+https://botspotter.app)"})
     with urllib.request.urlopen(req, timeout=20) as r:
-        data = json.load(r)
-    out = []
-    for p in data.get("prefixes", []):
-        for k in ("ipv4Prefix", "ipv6Prefix"):
-            if p.get(k):
-                out.append(p[k])
-    return out
+        return parse(json.load(r))
 
 
 def main(out_path: str) -> int:
@@ -44,18 +55,22 @@ def main(out_path: str) -> int:
     ranges: dict[str, list[str]] = {}
     for operator, urls in SOURCES.items():
         got: list[str] = []
-        ok = True
+        failed = 0
         for u in urls:
             try:
-                got += fetch(u)
+                n = fetch(u)
+                got += n
+                print(f"  {operator}: {u} -> {len(n)}")
             except Exception as e:  # noqa: BLE001
-                print(f"  {operator}: {u} failed ({e.__class__.__name__}); keeping previous")
-                ok = False
-        if got and ok:
-            ranges[operator] = sorted(set(got))
-        elif prev.get(operator):
-            ranges[operator] = prev[operator]
-        print(f"  {operator}: {len(ranges.get(operator, []))} prefixes")
+                print(f"  {operator}: {u} failed ({e.__class__.__name__})")
+                failed += 1
+        if got and not failed:
+            ranges[operator] = sorted(set(got))                      # everything fetched: fresh list
+        elif got or prev.get(operator):
+            # Some lists failed: keep what we had AND add what we got. (Before 2026-11-21 one failing
+            # URL kept only the old set, so a new or broken list froze the whole operator.)
+            ranges[operator] = sorted(set(got) | set(prev.get(operator, [])))
+        print(f"  {operator}: {len(ranges.get(operator, []))} prefixes" + (f" ({failed} list(s) failed, merged with previous)" if failed else ""))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"_updated": datetime.now(tz=timezone.utc).isoformat(timespec="seconds"), "ranges": ranges}, indent=0))
     print(f"wrote {out} ({sum(len(v) for v in ranges.values())} prefixes, {len(ranges)} operators)")
