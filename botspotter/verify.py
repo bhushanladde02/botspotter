@@ -29,7 +29,7 @@ SOURCES: dict[str, list[str]] = {
     "Microsoft": ["https://www.bing.com/toolbox/bingbot.json"],
     "Apple": ["https://search.developer.apple.com/applebot.json"],
     "Perplexity": ["https://www.perplexity.com/perplexitybot.json", "https://www.perplexity.com/perplexity-user.json"],
-    "DuckDuckGo": ["https://duckduckgo.com/duckduckbot.json"],
+    "DuckDuckGo": ["https://duckduckgo.com/duckduckbot.json", "https://duckduckgo.com/duckassistbot.json"],
     "Common Crawl": ["https://commoncrawl.org/ccbot.json"],
 }
 

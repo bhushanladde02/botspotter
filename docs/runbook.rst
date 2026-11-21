@@ -151,7 +151,10 @@ Runtime data lives in ``~/botspotter-data`` on the VM (``DATA_DIR`` in ``.env``)
    ``MAXMIND_LICENSE_KEY`` (account in ``private/notes.md``); the deploy passes them to ``remote.sh``, which also stores
    them in ``~/.botspotter-maxmind`` (0600) for the cron. Without them the map stays at country centroids.
 -  ``crawler_ranges.json`` — built by ``jobs/crawler_ranges.py`` from the operators' official IP lists
-   (``botspotter/verify.py`` ``SOURCES``). A vendor outage keeps the previous ranges for that operator.
+   (``botspotter/verify.py`` ``SOURCES``; several lists per operator where the vendor splits them, e.g. DuckDuckGo's
+   ``duckduckbot.json`` + ``duckassistbot.json``). If one of an operator's lists fails, what was fetched is merged
+   with the previous ranges for that operator (never dropped, never frozen). The job prints one line per list —
+   check a new source with ``docker compose exec -T api python -c "from botspotter.verify import Verifier; v=Verifier(); print(v.updated, {k: len(n) for k, n in v.nets.items()})"``.
 -  ``sensors.json`` — sensor site locations. Follows the packaged ``botspotter/data/sensors.json`` on every refresh
    (so a PR is the normal way to add a site). To hand-maintain the ``/data`` copy instead, ``touch
    ~/botspotter-data/sensors.json.custom``; the refresh then leaves it alone.
