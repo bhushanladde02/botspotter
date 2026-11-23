@@ -116,6 +116,8 @@ Operations
 +------------------------------------------+----------------------------------------------------------------------------------------------------------------------------+
 | Update bot registry                      | merge the daily ``bot/registry-sync`` PR, ``docker compose up -d --build ingest api``                                      |
 +------------------------------------------+----------------------------------------------------------------------------------------------------------------------------+
+| Describe a bot (purpose, robots.txt)     | add it to ``botspotter/data/bot_profiles.json`` (key = registry pattern) from the operator's own docs, by PR               |
++------------------------------------------+----------------------------------------------------------------------------------------------------------------------------+
 | Backup                                   | ``docker compose exec postgres pg_dump -U botspotter botspotter | gzip > backup.sql.gz`` (nightly cron, push to R2 — TODO) |
 +------------------------------------------+----------------------------------------------------------------------------------------------------------------------------+
 | Logs                                     | ``docker compose logs -f --tail 200 <service>``                                                                            |
@@ -293,6 +295,8 @@ Then (after the fix is deployed, if one is needed)::
    $C run --rm --no-deps aggregator python -m botspotter.repair --snapshot-key bs:snapshot:good --apply    # write
    $C start aggregator
 
+Per-bot behaviour keys (``bs:bot:<fp>:robots``, ``:net``, ``:verdict``) are not rebuilt (Postgres does not store
+them); after a replay incident they over-count that batch, which only shifts the bot-page wording.
 Trust/cloud counts processed between the snapshot and the repair are lost (they cannot be recounted); everything else
 is exact. Postgres keeps 90 days of ``events``, so repair after that window loses older history.
 

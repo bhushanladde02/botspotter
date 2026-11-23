@@ -46,7 +46,10 @@ the ledger is the detailed companion. See the runbook's "Evidence routine".
 Bots are not people — but
 -------------------------
 
-A one-person scraper running from a home connection is identified by ``UA family + headers + home ISP /16 + country``. That is not personal data under GDPR in any reasonable reading (a /16 is up to 65k addresses), and we never store the address itself. If someone asks for "their" bot to be removed, delete its ``bs:bot:<fp>`` keys and ``bots`` row; the name will re-appear on the next hit, so also add the fingerprint to a denylist (TODO when it first happens — see ``growth.md``).
+A one-person scraper running from a home connection is identified by ``UA family + headers + home ISP /16 + country``. That is not personal data under GDPR in any reasonable reading (a /16 is up to 65k addresses), and we never store the address itself. Bot pages also show observed behaviour, counted per bot from 2026-11-22: how often it fetched ``/robots.txt``
+(the path is used for that test only and still never stored), which hosting networks it came from (the same ASN
+label already shown on the map), and how many of its hits passed or failed the identity check. These are counts
+about automated clients, not about people. If someone asks for "their" bot to be removed, delete its ``bs:bot:<fp>`` keys and ``bots`` row; the name will re-appear on the next hit, so also add the fingerprint to a denylist (TODO when it first happens — see ``growth.md``).
 
 Sensor owners
 -------------

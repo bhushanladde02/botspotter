@@ -55,6 +55,7 @@ from .config import settings
 from .fingerprint import slugify_name
 from .sensors import SensorSites
 from .models import BotEvent, PortalVisit
+from .profile import behaviour as profile_behaviour, about as profile_about, blurb as profile_blurb
 
 log = logging.getLogger("botspotter.counters")
 
@@ -128,6 +129,7 @@ class Counters:
         # Arc destinations: packaged sensors.json, else sites enrolled self-serve (Redis), cached 60 s.
         await self._refresh_site_locations({e.site for e in events})
         p = self.r.pipeline(transaction=False)
+        p.setnx("bs:profile:since", time.time())   # when per-bot behaviour counting started
         live: list[bytes] = []
         for e in events:
             ts = e.ts
@@ -151,6 +153,13 @@ class Counters:
             p.zincrby(f"bs:bot:{e.fp}:gh", 1, e.gh[:3])
             p.pfadd(f"bs:bot:{e.fp}:sites", e.site)
             p.hset(f"bs:bot:{e.fp}", mapping={"last_seen": ts, "last_country": e.country, "last_site": e.site})
+            # Observed behaviour for the bot page (profile.py). Counted from 2026-11-22 on.
+            if e.hit_robots:
+                p.incr(f"bs:bot:{e.fp}:robots")
+            if e.cloud or e.org:
+                p.zincrby(f"bs:bot:{e.fp}:net", 1, e.cloud or e.org)
+            if e.verified:
+                p.zincrby(f"bs:bot:{e.fp}:verdict", 1, e.verified)
             sighting = orjson.dumps({"ts": ts, "site": e.site, "country": e.country, "gh": e.gh,
                                      "fp": e.fp, "name": e.name, "category": e.category,
                                      "city": e.city, "cloud": e.cloud, "verified": e.verified})
@@ -218,6 +227,28 @@ class Counters:
                 except Exception:  # pragma: no cover
                     pass
 
+        # A bot first seen as unidentified keeps its stored identity (hsetnx above). When the registry
+        # later recognises its User-Agent (e.g. link previewers added 2026-11-22), upgrade the stored
+        # kind/operator/category once — unless its operator has claimed it (claims own those fields).
+        known_now = {e.fp: e for e in events if e.kind == "known" and e.fp not in unseen}
+        if known_now:
+            try:
+                p = self.r.pipeline(transaction=False)
+                for fp in known_now:
+                    p.hmget(f"bs:bot:{fp}", "kind", "claimed_at")
+                metas = await p.execute()
+                p = self.r.pipeline(transaction=False)
+                n_up = 0
+                for (fp, e), (kind, claimed) in zip(known_now.items(), metas):
+                    if kind == b"heuristic" and not claimed:
+                        p.hset(f"bs:bot:{fp}", mapping={"kind": "known", "operator": e.operator, "category": e.category,
+                                                        "label": e.label, "registry_homepage": e.homepage or ""})
+                        n_up += 1
+                if n_up:
+                    await p.execute()
+            except Exception:  # noqa: BLE001 - cosmetic; counts are already applied
+                log.exception("identity upgrade failed (counts unaffected)")
+
         # Discovery check for anything that is a heuristic (unknown) bot.
         discovered: list[dict] = []
         candidates = {e.fp: e for e in events if e.kind != "known"}
@@ -234,7 +265,7 @@ class Counters:
                     item = {
                         "fp": fp, "name": e.name, "slug": slugify_name(e.name),
                         "ua_family": e.ua_family, "sites": int(n_sites), "ts": e.ts,
-                        "country": e.country,
+                        "country": e.country, "blurb": profile_blurb(e.kind, e.label, e.operator),
                     }
                     discovered.append(item)
                     p.hset(f"bs:bot:{fp}", "discovered", e.ts)
@@ -249,6 +280,7 @@ class Counters:
                 item = {
                     "fp": fp, "name": e.name, "slug": slugify_name(e.name), "ua_family": e.ua_family,
                     "sites": 1, "ts": e.ts, "country": e.country, "operator": e.operator,
+                    "blurb": profile_blurb(e.kind, e.label, e.operator),
                 }
                 discovered.append(item)
                 await self.r.hset(f"bs:bot:{fp}", "discovered", e.ts)
@@ -329,7 +361,7 @@ class Counters:
         # Resolve names for the top bots in one round trip.
         p = self.r.pipeline(transaction=False)
         for fp, _ in top:
-            p.hmget(f"bs:bot:{fp.decode()}", "name", "slug", "operator", "category", "kind", "display_name", "claimed_at")
+            p.hmget(f"bs:bot:{fp.decode()}", "name", "slug", "operator", "category", "kind", "display_name", "claimed_at", "label", "desc")
         metas = await p.execute()
         feed_items = [orjson.loads(x) for x in feed]
         # Origin cells ride along in the snapshot so hovering a bot never waits on a request.
@@ -338,9 +370,10 @@ class Counters:
             f["places"] = places.get(f.get("fp", ""), [])
         top_bots = []
         for (fp, score), meta in zip(top, metas):
-            name, slug, op, cat, kind, dname, claimed = [m.decode() if m else "" for m in meta]
+            name, slug, op, cat, kind, dname, claimed, label, desc = [m.decode() if m else "" for m in meta]
             top_bots.append({"fp": fp.decode(), "name": name, "slug": slug, "operator": op,
                              "category": cat, "kind": kind, "hits": int(score),
+                             "blurb": desc or profile_blurb(kind, label, op),
                              "display_name": dname or None, "claimed": bool(claimed),
                              "places": places.get(fp.decode(), [])})
 
@@ -530,12 +563,34 @@ class Counters:
         places = (await self.places_for([fp], limit=30)).get(fp, [])
         base = int(time.time() // 3600) * 3600
         p = self.r.pipeline(transaction=False)
-        for i in range(23, -1, -1):
+        for i in range(14 * 24 - 1, -1, -1):           # 14 days of hourly counts (the key TTL), oldest first
             p.get(f"bs:bot:{fp}:h:{_hour(base - i * 3600)}")
         p.lrange(f"bs:bot:{fp}:recent", 0, RECENT_MAX - 1)
+        p.get(f"bs:bot:{fp}:robots")
+        p.zrevrange(f"bs:bot:{fp}:net", 0, 4, withscores=True)
+        p.zrange(f"bs:bot:{fp}:verdict", 0, -1, withscores=True)
+        p.zcard(f"bs:bot:{fp}:countries")
+        p.get("bs:profile:since")
         res = await p.execute()
-        hourly = [int(x or 0) for x in res[:24]]
-        recent = [orjson.loads(x) for x in res[24]]
+        hourly14 = [int(x or 0) for x in res[:336]]
+        hourly = hourly14[-24:]
+        recent = [orjson.loads(x) for x in res[336]]
+        robots_hits, nets, verdicts, n_countries, since = res[337:342]
+        networks = [(n.decode(), int(c)) for n, c in nets]
+        if not networks:                                # bots last seen before 2026-11-22: use recent sightings
+            seen: dict[str, int] = {}
+            for r in recent:
+                if r.get("cloud"):
+                    seen[r["cloud"]] = seen.get(r["cloud"], 0) + 1
+            networks = sorted(seen.items(), key=lambda x: -x[1])
+        about = profile_about(m.get("kind", ""), m.get("label", ""), m.get("operator", ""))
+        since_h = float(since or time.time())
+        hits_tracked = sum(n for i, n in enumerate(hourly14) if base - (335 - i) * 3600 >= since_h - 3600)
+        behaviour = profile_behaviour(
+            kind=m.get("kind", ""), label=m.get("label", ""), ua_family=m.get("ua_family", ""),
+            robots_hits=int(robots_hits or 0), hits_tracked=hits_tracked, networks=networks,
+            verdicts={v.decode(): int(c) for v, c in verdicts}, n_sites=int(n_sites),
+            n_countries=int(n_countries), hourly14=hourly14)
         evolved_from = None
         for other, first in lineage:
             o = other.decode()
@@ -560,6 +615,8 @@ class Counters:
             "last_country": m.get("last_country"), "last_site": m.get("last_site"),
             "recent": [{k: v for k, v in r.items() if k not in ("fp", "name", "category")} for r in recent],
             "evolved_from": ev_meta,
+            "about": about,            # operator's own description (known bots), see profile.py
+            "behaviour": behaviour,    # what we observed, + a hedged summary
             # claim / identity management (see claims.py)
             "claimed": bool(m.get("claimed_at")),
             "claimed_at": float(m["claimed_at"]) if m.get("claimed_at") else None,
