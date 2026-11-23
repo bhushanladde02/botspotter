@@ -68,7 +68,7 @@ Read API (public, Redis-only, cache headers on everything)
      - geohash buckets ``{gh, lat, lon, hits}``
      - 5 s
    * - ``GET /v1/bots/{slug}``
-     - bot profile: name, operator, category, first/last seen, last country/site, hits, sites, countries, hourly, recent sightings, ``places`` (geohash-3 cells with hit counts, for the map focus; falls back to country centroids for bots recorded before cell tracking), evolved_from
+     - bot profile: name, operator, category, first/last seen, last country/site, hits, sites, countries, hourly, recent sightings, ``places`` (geohash-3 cells with hit counts, for the map focus; falls back to country centroids for bots recorded before cell tracking), evolved_from, ``about`` and ``behaviour`` (below)
      - 10 s
    * - ``GET /v1/search?q=&limit=``
      - prefix then substring match on names
@@ -142,6 +142,20 @@ Claims (see :doc:`claims`)
 - ``PATCH /v1/bots/{slug}`` — header ``X-BS-Owner``; body any of ``display_name, description, homepage, operator, category, contact_url``
 
 Bot profiles and search results carry ``display_name``, ``claimed``, ``description``, ``homepage``, ``ua_host``, ``registry_homepage``.
+
+**Purpose and behaviour** (``botspotter/profile.py``), on every bot profile:
+
+- ``about`` — known bots only, else ``null``: ``{purpose, uses, uses_text, robots, robots_text, token, note,
+  verifiable}``. The operator's own account, from ``botspotter/data/bot_profiles.json``. ``robots`` ∈ ``honours |
+  may ignore | not a crawler | not stated`` ("not stated" = we found no statement). ``verifiable`` = the operator
+  publishes IP ranges, so impostors are flagged.
+- ``behaviour`` — every bot: ``{rhythm, robots, facts: [{k, v}], summary}``. Observed on the map's sites only:
+  rhythm over 14 days (``bursty | steady | occasional | quiet``), robots.txt fetches (``reads | never | unknown``;
+  "never" only after ≥20 hits since tracking began 2026-11-22), hosting networks, reach, how it identifies itself,
+  identity-check results. ``summary`` is a hedged "Looks like …" line for unidentified bots, ``""`` for known ones.
+
+Snapshot ``bots.top[]`` and feed items carry ``blurb``: the operator's purpose, the claimed description, or
+"Unidentified — looks like <tool>." (used as the hover text in the lists).
 
 Snapshot shape
 --------------

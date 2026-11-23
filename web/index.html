@@ -160,6 +160,11 @@
   .st.blocked{background:#2a1626;color:#ff6fb0} .st.allowed{background:#13261a;color:#6fe39a} .st.partial{background:#2a2414;color:#ffc85c}
   .st.verified{background:#13261a;color:#6fe39a} .st.impostor{background:#2a1626;color:#ff6fb0} .st.unknown{background:#182039;color:var(--muted)}
   .ck-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  .pbox{clear:both;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:13px}
+  .pbox h4{margin:0 0 6px;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .pbox .lead{color:var(--text);margin-bottom:6px} .pbox .facts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;color:var(--muted)}
+  .pbox .facts b{font-weight:500;color:var(--muted)} .pbox .facts span{color:var(--text)}
+  .pbox .src{margin-top:6px;font-size:11px;color:var(--muted)}
   .ck-row input,.ck-row select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;font:inherit;font-size:14px}
   .ck-verdict{font-family:var(--mono);font-size:16px;margin-top:12px}
   details.ck summary{cursor:pointer;color:var(--muted);font-size:13px;margin-top:10px}
@@ -550,6 +555,8 @@ BOTSPOTTER_KEY = "<span class="en-k"></span>"</pre>
   <button class="close" onclick="closeModal()">×</button>
   <h2 id="m_name">—</h2>
   <div id="m_sub" style="color:var(--muted);font-size:13px"></div>
+  <div id="m_about" class="pbox" style="display:none"></div>
+  <div id="m_behave" class="pbox" style="display:none"></div>
   <canvas class="spark" id="m_spark" style="margin-top:12px"></canvas>
   <div class="kv" id="m_kv"></div>
   <h3 style="margin:14px 0 0;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Recent sightings</h3>
@@ -682,7 +689,7 @@ function rows(el, items, render, force){
   if (!force && (html === el._html || (focusSlug && el.matches(':hover')))) return;
   el._html = html; el.innerHTML = html;
 }
-const botRow = b => `<div class="row" data-slug="${esc(b.slug)}" onmouseenter="focusBot('${esc(b.slug)}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(b.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(b.slug)}.svg?size=56" alt="" loading="lazy">${esc(b.display_name||b.name)}${b.claimed?' <span title="claimed by operator" style="color:var(--acid)">✓</span>':''}</span><span class="tag ${esc(b.category)}">${esc(b.operator==='unknown'?'unknown':b.operator)}</span></span><span class="h">${fmt(b.hits)}</span></div>`;
+const botRow = b => `<div class="row" data-slug="${esc(b.slug)}" title="${esc(b.blurb||'')}" onmouseenter="focusBot('${esc(b.slug)}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(b.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(b.slug)}.svg?size=56" alt="" loading="lazy">${esc(b.display_name||b.name)}${b.claimed?' <span title="claimed by operator" style="color:var(--acid)">✓</span>':''}</span><span class="tag ${esc(b.category)}">${esc(b.operator==='unknown'?'unknown':b.operator)}</span></span><span class="h">${fmt(b.hits)}</span></div>`;
 
 // ---------- snapshot polling (CDN-cached, 2s)
 let lastSnap = null;
@@ -709,7 +716,7 @@ function paint(s){
     renderCats(s.bots.by_category); renderTicker(s.sightings || []);
     const top = catFilter ? s.bots.top.filter(b=>b.category===catFilter) : s.bots.top;
     rows($('top'), top, botRow);
-    rows($('feed'), s.feed, f => `<div class="row" onmouseenter="focusBot('${esc(f.slug)}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(f.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(f.slug)}.svg?size=56" alt="" loading="lazy">${esc(f.name)}</span><div class="m">${esc(f.ua_family)} · ${f.sites} site${f.sites>1?'s':''} · ${esc(f.country)}</div></span><span class="m">${new Date(f.ts*1000).toLocaleTimeString()}</span></div>`);
+    rows($('feed'), s.feed, f => `<div class="row" title="${esc(f.blurb||'')}" onmouseenter="focusBot('${esc(f.slug)}')" onmouseleave="unfocusBot()" onclick="openBot('${esc(f.slug)}')" style="cursor:pointer"><span><span class="n"><img class="av" src="${API}/avatar/${esc(f.slug)}.svg?size=56" alt="" loading="lazy">${esc(f.name)}</span><div class="m">${esc(f.ua_family)} · ${f.sites} site${f.sites>1?'s':''} · ${esc(f.country)}</div></span><span class="m">${new Date(f.ts*1000).toLocaleTimeString()}</span></div>`);
     if (s.trust){ $('t_ver').textContent = fmt(s.trust.verified); $('t_imp').textContent = fmt(s.trust.impostors);
       rows($('t_ops'), s.trust.impostors_by_operator, o => `<div class="row"><span class="n">pretending to be ${esc(o.operator)}</span><span class="h" style="color:#ff3b4f">${fmt(o.hits)}</span></div>`);
       const ops = s.trust.operators || [], upd = s.trust.ranges_updated ? ' (ranges updated ' + s.trust.ranges_updated.slice(0,10) + ')' : '';
@@ -925,6 +932,19 @@ async function openBot(slug){
   let av = document.getElementById('m_av'); if(!av){ av = document.createElement('img'); av.id='m_av'; av.className='av-big'; av.alt=''; document.querySelector('#modal .box').insertBefore(av, $('m_name')); }
   av.src = API + '/avatar/' + encodeURIComponent(slug) + '.svg?size=192';
   $('m_sub').innerHTML = `${b.display_name?`aka <span class="ex">${esc(b.name)}</span> · `:''}${esc(b.operator)} · <span class="tag ${esc(b.category)}">${esc(b.category)}</span> · ${b.claimed?'<span class="tag" style="color:var(--acid)">✓ claimed by operator</span>':(b.kind==='known'?'publicly known crawler':'unidentified automation')}${b.description?`<div style="margin-top:8px;color:var(--text)">${esc(b.description)}</div>`:''}${b.homepage?`<div style="margin-top:4px"><a href="${esc(b.homepage)}" target="_blank" rel="noopener nofollow">${esc(b.homepage)}</a></div>`:''}`;
+  const ab = b.about, bh = b.behaviour;
+  const rb = {honours:'✓', 'may ignore':'⚠', 'not a crawler':'·', 'not stated':'?'};
+  $('m_about').style.display = ab ? 'block' : 'none';
+  if (ab) $('m_about').innerHTML = `<h4>What it's for · per ${esc(b.operator)}</h4><div class="lead">${esc(ab.purpose)}</div>
+    <div class="facts"><b>Your content</b><span>${esc(ab.uses_text)}</span>
+    <b>robots.txt</b><span>${rb[ab.robots]||''} ${esc(ab.robots_text)}${ab.note?` — <i>${esc(ab.note)}</i>`:''}</span>
+    <b>Block it</b><span><span class="ex">User-agent: ${esc(ab.token)}</span> · <span class="ex">Disallow: /</span></span>
+    <b>Identity</b><span>${ab.verifiable ? 'checkable: the operator publishes its IP ranges, so fakes are flagged' : 'not checkable: no published IP ranges, so anyone can claim this name'}</span></div>
+    ${(b.homepage||b.registry_homepage)?`<div class="src">source: <a href="${esc(b.homepage||b.registry_homepage)}" target="_blank" rel="noopener nofollow">operator documentation</a></div>`:''}`;
+  $('m_behave').style.display = bh ? 'block' : 'none';
+  if (bh) $('m_behave').innerHTML = `<h4>What we've observed</h4>${bh.summary?`<div class="lead">${esc(bh.summary)}</div>`:''}
+    <div class="facts">${bh.facts.map(f=>`<b>${esc(f.k)}</b><span>${esc(f.v)}</span>`).join('')}</div>
+    <div class="src">from this bot's visits to sites on the map — we never see its traffic elsewhere</div>`;
   const first = new Date(b.first_seen*1000), last = new Date(b.last_seen*1000);
   $('m_kv').innerHTML = [
     ['hits', fmt(b.hits)], ['sites crawled', fmt(b.sites)], ['first spotted', first.toLocaleString()+' ('+flag(b.first_country)+' '+esc(b.first_country)+')'],

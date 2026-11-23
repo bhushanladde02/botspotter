@@ -79,7 +79,10 @@ Identity model
 What the portal shows per bot
 -----------------------------
 
-``/v1/bots/{slug}``: name, operator, category (training / search / agent / scraper / seo / unknown), software family, first spotted (when + country), **last spotted** (ago + country + sensor), hits, sites crawled, top countries, 24h sparkline, **recent sightings** (last 25: time, country, sensor), lineage ("evolved from"). "Where is it now" = last sighting; a crawler is never in one place, it runs from many machines at once, so presence is only as fine as the sensor network.
+``/v1/bots/{slug}``: name, operator, category (training / search / agent / scraper / seo / unknown), software family, first spotted (when + country), **last spotted** (ago + country + sensor), hits, sites crawled, top countries, 24h sparkline, **recent sightings** (last 25: time, country, sensor), lineage ("evolved from"); **what it's for** (known bots: the operator's documented purpose, what it does with
+content, robots.txt policy, the token to block it, whether its identity is checkable — ``data/bot_profiles.json``)
+and **what we've observed** (every bot: rhythm, robots.txt fetches, hosting networks, reach, disguise as a browser,
+identity checks, plus a hedged "Looks like …" line for unidentified bots — ``profile.py``). "Where is it now" = last sighting; a crawler is never in one place, it runs from many machines at once, so presence is only as fine as the sensor network.
 
 ``/v1/sightings`` and ``snapshot.sightings``: global live ticker of the last 100 hits across all sensors.
 
